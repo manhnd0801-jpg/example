@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "pbcList": [
+    {
+      "pbcId": "student-profile",
+      "version": "1.0.0",
+      "remoteUrl": "http://localhost:3001/assets/remoteEntry.js",
+      "scope": "pbc_student_profile",
+      "module": "./bootstrap",
+      "routePrefix": "/students",
+      "enabled": true
+    },
+    {
+      "pbcId": "course-management",
+      "version": "1.0.0",
+      "remoteUrl": "http://localhost:3002/assets/remoteEntry.js",
+      "scope": "pbc_course_management",
+      "module": "./bootstrap",
+      "routePrefix": "/courses",
+      "enabled": true
+    },
+    {
+      "pbcId": "enrollment-management",
+      "version": "1.0.0",
+      "remoteUrl": "http://localhost:3003/assets/remoteEntry.js",
+      "scope": "pbc_enrollment_management",
+      "module": "./bootstrap",
+      "routePrefix": "/enrollments",
+      "enabled": true
+    }
+  ]
+}

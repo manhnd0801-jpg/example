@@ -1,0 +1,29 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  APP_ID: student-management
+
+build:app-shell:
+  stage: build
+  script:
+    - cd app-shell && npm ci && npm run build
+
+build:pbcs:
+  stage: build
+  script:
+    - for pbc in pbcs/*/; do cd "$pbc" && npm ci && npm run build && cd -; done
+
+test:
+  stage: test
+  script:
+    - echo "Run integration tests here"
+
+deploy:staging:
+  stage: deploy
+  script:
+    - echo "Deploy $APP_ID to staging"
+  only:
+    - main

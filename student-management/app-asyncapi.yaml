@@ -1,0 +1,54 @@
+asyncapi: 2.6.0
+info:
+  title: Student Management App Event Map
+  version: 1.0.0
+  description: Event orchestration contract for Student Management App Shell
+
+servers:
+  localKafka:
+    url: localhost:9092
+    protocol: kafka
+    description: Local Kafka broker
+
+channels:
+  app.student-management.ui.student-selected:
+    description: Shell lắng nghe khi student-profile PBC phát ra sự kiện sinh viên được chọn
+    bindings:
+      kafka:
+        topic: app.student-management.ui.student-selected
+        groupId: app-shell-consumer-group
+    subscribe:
+      operationId: onStudentSelected
+      message:
+        payload:
+          type: object
+          required: [studentId]
+          properties:
+            studentId:
+              type: string
+              description: ID sinh viên được chọn
+            tenantId:
+              type: string
+              description: Tenant context
+
+  pbc.enrollment-management.enrollment.prefill-requested:
+    description: Shell phát event yêu cầu enrollment-management prefill form đăng ký học phần
+    bindings:
+      kafka:
+        topic: pbc.enrollment-management.enrollment.prefill-requested
+    publish:
+      operationId: publishEnrollmentPrefillRequested
+      message:
+        payload:
+          type: object
+          required: [studentId, source]
+          properties:
+            studentId:
+              type: string
+              description: ID sinh viên để prefill
+            source:
+              type: string
+              description: PBC nguồn phát sinh yêu cầu (ví dụ student-profile)
+            tenantId:
+              type: string
+              description: Tenant context

@@ -1,0 +1,45 @@
+{
+  "appId": "student-management",
+  "version": "1.0.0",
+  "name": "Student Management Portal",
+  "description": "Composed app for student management capabilities",
+  "category": "Education",
+  "domain": "student-management",
+  "includedPBCs": [
+    { "pbcId": "student-profile", "version": "1.0.0" },
+    { "pbcId": "course-management", "version": "1.0.0" },
+    { "pbcId": "enrollment-management", "version": "1.0.0" }
+  ],
+  "eventBus": {
+    "type": "kafka",
+    "version": "3.x",
+    "topicPrefix": "app.student-management"
+  },
+  "appShell": {
+    "framework": "react",
+    "moduleFederation": true,
+    "uiStrategy": "module-federation",
+    "federationPlugin": "@originjs/vite-plugin-federation",
+    "basePath": "/",
+    "defaultRoute": "/dashboard"
+  },
+  "theme": {
+    "primaryColor": "#0d6efd",
+    "radius": "8px",
+    "fontFamily": "Inter, sans-serif"
+  },
+  "security": {
+    "authPBC": "auth-service",
+    "publicRoutes": ["/health"],
+    "defaultPolicy": "authenticated"
+  },
+  "i18n": {
+    "defaultLocale": "vi",
+    "supportedLocales": ["vi", "en"]
+  },
+  "uiStrategy": {
+    "type": "module-federation",
+    "shadowDOM": false,
+    "styleIsolation": false
+  }
+}

@@ -1,0 +1,26 @@
+openapi: 3.1.0
+info:
+  title: Student Management App API
+  version: 1.0.0
+  description: BFF endpoints exposed by Student Management App Shell
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      operationId: healthCheck
+      tags: [Health]
+      responses:
+        "200":
+          description: App Shell is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
