@@ -126,6 +126,7 @@ Xem chi tiết tất cả topics và consumer groups tại [`docs/EVENT-FLOW.md`
 
 | File | Nội dung |
 |------|----------|
+| [`docs/REQUIREMENTS.md`](./docs/REQUIREMENTS.md) | Yêu cầu nghiệp vụ gốc — mô tả từng PBC, dữ liệu, event tổng quan |
 | [`docs/BUSINESS-OVERVIEW.md`](./docs/BUSINESS-OVERVIEW.md) | Mô tả nghiệp vụ, data model, API, events từng PBC |
 | [`docs/EVENT-FLOW.md`](./docs/EVENT-FLOW.md) | Sơ đồ event flow, bảng topics, payload envelope chuẩn |
 | [`app-contract.json`](./app-contract.json) | Metadata & contract của App (nguồn sự thật cấu hình) |
