@@ -1,0 +1,24 @@
+{
+  "title": "UserAttributes",
+  "description": "Schema cho cột attributes JSON trong bảng users",
+  "type": "object",
+  "properties": {
+    "avatarUrl": {
+      "type": "string",
+      "description": "URL ảnh đại diện"
+    },
+    "phoneNumber": {
+      "type": "string",
+      "description": "Số điện thoại"
+    },
+    "lastLoginAt": {
+      "type": "string",
+      "description": "Thời điểm đăng nhập lần cuối (ISO 8601)"
+    },
+    "loginCount": {
+      "type": "integer",
+      "description": "Số lần đăng nhập"
+    }
+  },
+  "additionalProperties": true
+}

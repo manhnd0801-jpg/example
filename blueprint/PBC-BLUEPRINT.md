@@ -1,5 +1,5 @@
 # VNPT COMPOSABLE PBC BLUEPRINT (AI Generation Template)
-Phiên bản: 2.4 
+Phiên bản: 2.5
 Nền tảng: VNPT Composable Platform (AI-First & Cloud Development)
 
 ## QUY TẮC BẮT BUỘC AI PHẢI TUÂN THEO (KHÔNG ĐƯỢC VI PHẠM)
@@ -109,32 +109,35 @@ pbc-[domain]-[capability]/                  # Tên thư mục gốc, ví dụ: p
 ├── asyncapi.yaml                           # BẮT BUỘC nếu có event (AsyncAPI 2.6)
 │
 ├── ui/                                     # CHỈ TẠO nếu type = full hoặc ui-only
-│   ├── slots/                              # Các placeholder để App Shell inject UI
-│   │   ├── MenuSlot.tsx                    # Slot Menu
-│   │   ├── ActionBarSlot.tsx               # Slot Action Bar
-│   │   ├── ListSlot.tsx                    # Slot danh sách
-│   │   ├── FormSlot.tsx                    # Slot form thêm/sửa
-│   │   └── DetailSlot.tsx                  # Slot chi tiết
-│   ├── components/                         # Component nội bộ - Theo UI Library user chọn
-│   │   ├── ui/                             # Components từ UI Library (Ant, MUI, Shadcn...)
-│   │   │   ├── Button.tsx
-│   │   │   ├── Table.tsx
-│   │   │   ├── Form.tsx
-│   │   │   └── Modal.tsx
-│   │   └── business/                       # Business components kết hợp với slots
-│   │       ├── UserTable.tsx
-│   │       └── UserForm.tsx
-│   ├── hooks/
-│   │   └── event-handlers.ts               # Xử lý sự kiện (onUserSelected, onDataSaved…)
-│   ├── services/
-│   │   └── pbc-api.ts                      # HTTP client gọi API PBC — BẮT BUỘC type-safe (quy tắc 15); import type từ types/ hoặc client sinh từ openapi.yaml
-│   ├── types/
-│   │   └── index.ts                        # Interface/DTO UI khớp OpenAPI — phải được services/pbc-api.ts (và sdk nếu có) sử dụng
-│   ├── locales/                            # Khuyến nghị: vi.json, en.json (theo i18n trong contract)
-│   ├── styles/
-│   │   └── design-tokens.css               # CSS Variables (--pbc-primary-color, --pbc-radius…)
+│   ├── src/
+│   │   ├── main.tsx                        # Entry point DUY NHẤT — dùng cho cả standalone (npm run dev) lẫn bootstrap MF
+│   │   ├── StandaloneApp.tsx               # Mini shell chỉ dùng khi chạy PBC độc lập; KHÔNG expose qua Module Federation
+│   │   ├── index.ts                        # Export các slot/component cho Module Federation (exposes)
+│   │   ├── slots/                          # Các placeholder để App Shell inject UI — thin wrapper, không chứa logic UI
+│   │   │   ├── MenuSlot.tsx                # Slot Menu
+│   │   │   ├── ActionBarSlot.tsx           # Slot Action Bar
+│   │   │   ├── ListSlot.tsx                # Slot danh sách
+│   │   │   ├── FormSlot.tsx                # Slot form thêm/sửa
+│   │   │   └── DetailSlot.tsx              # Slot chi tiết
+│   │   ├── components/                     # Component nội bộ - Theo UI Library user chọn
+│   │   │   ├── ui/                         # Re-export / thin wrapper từ UI Library (Ant, MUI, Shadcn...)
+│   │   │   │   └── index.ts                # Tập trung export để dễ swap UI library sau này
+│   │   │   └── business/                   # Business components — chứa logic UI thật, được slot dùng
+│   │   │       ├── UserTable.tsx
+│   │   │       └── UserForm.tsx
+│   │   ├── hooks/
+│   │   │   └── event-handlers.ts           # emit/listen event qua window CustomEvent ↔ App Shell ↔ Kafka/NATS
+│   │   ├── services/
+│   │   │   └── pbc-api.ts                  # HTTP client gọi API PBC — BẮT BUỘC type-safe (quy tắc 15)
+│   │   ├── types/
+│   │   │   └── index.ts                    # Interface/DTO UI khớp OpenAPI
+│   │   ├── locales/                        # vi.json, en.json (theo i18n trong contract)
+│   │   └── styles/
+│   │       └── design-tokens.css           # CSS Variables (--pbc-primary-color, --pbc-radius…)
+│   ├── index.html                          # HTML entry — trỏ vào src/main.tsx
 │   ├── manifest.json                       # Xem mục manifest.json
-│   ├── index.ts                            # Entry point export Module Federation / Web Component
+│   ├── .env.example                        # Biến môi trường UI (VITE_*) — không commit .env thật
+│   ├── vite.config.ts                      # Module Federation remote config + dev server
 │   └── package.json                        # Package cho UI
 │
 ├── api/                                    # CHỈ TẠO nếu type = full hoặc api-only; event-only → thư mục worker tương đương (ví dụ worker/)
@@ -192,6 +195,38 @@ pbc-[domain]-[capability]/                  # Tên thư mục gốc, ví dụ: p
 
 *(Không có `src/` ở root PBC cho backend — xem quy tắc 14.)*
 
+### UI standalone & Module Federation (hai mode trong một entry point)
+
+PBC UI có **hai mode hoạt động từ cùng một codebase**:
+
+| Mode | Lệnh | Entry | Mục đích |
+|------|------|-------|---------|
+| Standalone | `npm run dev` | `index.html` → `src/main.tsx` → `StandaloneApp.tsx` | Chạy/test PBC độc lập, không cần App Shell |
+| Remote MF | `npm run build` | `vite.config.ts` → `exposes` → `remoteEntry.js` | App Shell load slot qua Module Federation |
+
+**Quy tắc bắt buộc:**
+- `src/main.tsx` là entry point **duy nhất** — không tạo thêm `src/dev/main.tsx` hay folder `dev/` riêng.
+- `StandaloneApp.tsx` là mini shell chỉ dùng khi dev độc lập — **không** được khai trong `exposes` của `vite.config.ts`.
+- `src/index.ts` chỉ export các slot/component cần expose cho App Shell.
+- Mọi biến môi trường UI dùng prefix `VITE_` và khai trong `ui/.env.example`; không hard-code giá trị runtime (tenant ID, API URL, ...) trong source.
+- `VITE_DEV_TENANT_ID` trong `.env.example` — dùng khi chạy standalone, đọc qua `import.meta.env.VITE_DEV_TENANT_ID`.
+
+**Cấu trúc `vite.config.ts` chuẩn:**
+```typescript
+federation({
+  name: 'pbc_<pbcId_snake>',   // khớp scope trong pbc-registry.json
+  filename: 'remoteEntry.js',
+  exposes: {
+    './bootstrap': './src/index.ts',
+    './XxxSlot':   './src/slots/XxxSlot',
+    // StandaloneApp KHÔNG được expose
+  },
+  shared: ['react', 'react-dom'],  // thêm UI library nếu dùng
+})
+```
+
+- **Một** service API chạy được → **một** cây mã dưới `api/` (entry + `package.json` trong `api/` hoặc theo `properties.dockerLayout`).
+
 ### Ranh giới thư mục khi đặt dưới `pbcs/<tên>/` (tránh lỗi gen phổ biến)
 
 - **Một** service API chạy được → **một** cây mã dưới `api/` (entry + `package.json` trong `api/` hoặc theo `properties.dockerLayout`).
@@ -237,6 +272,16 @@ Khuyến nghị chuẩn hóa thêm để tương thích App Blueprint:
 - **Tenant resolution**: JWT claim, header `X-Tenant-Id`, hoặc subdomain — ghi rõ trong `pbc-contract.properties.tenantResolution`.
 - **Schema-per-tenant** (như `tenant-init.sql`) là mặc định blueprint; nếu dùng PostgreSQL RLS thì ghi thêm trong contract và migration.
 - **`attributes`**: validate bằng JSON Schema trong `db/schemas/`; không chứa dữ liệu nhạy cảm không mã hóa nếu policy tổ chức yêu cầu mã hóa — ghi trong `properties.dataClassification`.
+- **Seed scripts (`db/seed/*.sql`) không được hard-code `tenant_id`**. Dùng PostgreSQL session variable `current_setting('app.tenant_id')` hoặc tham số psql `-v tenant_id=...`; throw exception nếu biến chưa được set. Mẫu chuẩn:
+  ```sql
+  DO $$ DECLARE v_tenant_id TEXT := current_setting('app.tenant_id', true);
+  BEGIN
+    IF v_tenant_id IS NULL OR v_tenant_id = '' THEN
+      RAISE EXCEPTION 'app.tenant_id must be set before running seed';
+    END IF;
+    INSERT INTO ... (tenant_id) VALUES (v_tenant_id) ON CONFLICT DO NOTHING;
+  END $$;
+  ```
 
 ### API bootstrap & chạy độc lập
 - **Phạm vi stack:** Yêu cầu trong các mục bootstrap, health, logging, JWT, `.env` là **trung lập ngôn ngữ** — áp dụng cho mọi `technologies.api`. Các ví dụ **`main.ts` / `app.module.ts`**, **Terminus**, **JwtAuthGuard**, **Winston / Pino** chỉ là **minh họa cho Node/NestJS**; stack khác (Spring Boot, Gin/Fiber, FastAPI, …) phải có **phần tử tương đương** đạt cùng mục tiêu.
@@ -268,6 +313,7 @@ Khuyến nghị chuẩn hóa thêm để tương thích App Blueprint:
 - OpenAPI khai `securitySchemes` (JWT, …) thì **implementation phải áp guard / middleware tương ứng** lên **controller hoặc route nghiệp vụ** — ví dụ Nest: **`JwtAuthGuard`** + **passport-jwt** (hoặc mech JWT chuẩn tổ chức); stack khác: filter/interceptor tương đương.
 - **Không** hard-code trong source: URL **NATS** (`nats://…`), connection DB, mật khẩu, API key, broker bất kỳ — chỉ đọc từ **biến môi trường** (hoặc secret manager). Theo quy tắc 11, **mặc định NATS**; nếu dùng broker khác phải ghi trong `pbc-contract.json` và vẫn đọc qua env.
 - Kèm **`api/.env.example`** (hoặc root PBC) liệt kê tên biến **không** giá trị thật; `.env` thật trong `.gitignore`. Có thể ghi danh sách biến bắt buộc trong `pbc-contract.properties.requiredEnvVars` (xem template contract).
+- Kèm **`ui/.env.example`** liệt kê các biến `VITE_*` cần thiết cho UI (ví dụ `VITE_AUTH_API_URL`, `VITE_DEV_TENANT_ID`); `.env` thật trong `.gitignore`. Không hard-code URL API hay tenant ID trong source UI.
 
 ### Sự kiện: idempotency & phiên bản
 - Message có thể mang `eventId`, `schemaVersion`, `occurredAt`; consumer **idempotent** theo `eventId` hoặc `Nats-Msg-Id` khi JetStream.

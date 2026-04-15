@@ -1,0 +1,25 @@
+{
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "loginSuccess": "Login successful",
+    "loginFailed": "Invalid username or password"
+  },
+  "user": {
+    "title": "User Management",
+    "create": "Add user",
+    "edit": "Edit user",
+    "delete": "Delete user",
+    "email": "Email",
+    "fullName": "Full name",
+    "role": "Role",
+    "status": "Status"
+  }
+}

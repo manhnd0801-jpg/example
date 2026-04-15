@@ -1,0 +1,855 @@
+openapi: 3.1.0
+info:
+  title: Auth Service API
+  version: 0.1.0
+  description: |
+    API xác thực và phân quyền cho Student Management Portal.
+    Cung cấp JWT + Refresh Token, RBAC, quản lý user/role/permission.
+
+servers:
+  - url: http://localhost:3001
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Đăng nhập, đăng xuất, refresh token, đổi mật khẩu
+  - name: Users
+    description: Quản lý tài khoản người dùng
+  - name: Roles
+    description: Quản lý vai trò
+  - name: Permissions
+    description: Quản lý quyền hạn
+  - name: Health
+    description: Health & readiness check
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      operationId: healthCheck
+      security: []
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /ready:
+    get:
+      tags: [Health]
+      summary: Readiness check (probe DB + Kafka)
+      operationId: readinessCheck
+      security: []
+      responses:
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: Service not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Đăng nhập
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              data:
+                username: admin
+                password: "P@ssw0rd"
+              metadata:
+                requestId: req_001
+                correlationId: corr_001
+                tenantId: tenant-001
+      responses:
+        "200":
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Đăng xuất
+      operationId: logout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogoutRequest"
+      responses:
+        "200":
+          description: Đăng xuất thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Gia hạn access token
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+      responses:
+        "200":
+          description: Token mới
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Gửi email reset mật khẩu
+      operationId: forgotPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordRequest"
+      responses:
+        "200":
+          description: Email đã được gửi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /v1/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Đặt lại mật khẩu bằng token
+      operationId: resetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "200":
+          description: Mật khẩu đã được đặt lại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /v1/auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Đổi mật khẩu (yêu cầu mật khẩu cũ)
+      operationId: changePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "200":
+          description: Mật khẩu đã được thay đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/users:
+    get:
+      tags: [Users]
+      summary: Danh sách người dùng
+      operationId: listUsers
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: role
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [ACTIVE, INACTIVE, LOCKED] }
+      responses:
+        "200":
+          description: Danh sách người dùng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    post:
+      tags: [Users]
+      summary: Tạo tài khoản mới
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: Tài khoản đã được tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/users/{userId}:
+    get:
+      tags: [Users]
+      summary: Xem chi tiết người dùng
+      operationId: getUserById
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Chi tiết người dùng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Users]
+      summary: Cập nhật thông tin người dùng
+      operationId: updateUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Thông tin đã được cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Users]
+      summary: Xóa người dùng (soft delete)
+      operationId: deleteUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Người dùng đã bị xóa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/users/{userId}/role:
+    patch:
+      tags: [Users]
+      summary: Thay đổi role của người dùng
+      operationId: changeUserRole
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeRoleRequest"
+      responses:
+        "200":
+          description: Role đã được thay đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/roles:
+    get:
+      tags: [Roles]
+      summary: Danh sách role
+      operationId: listRoles
+      responses:
+        "200":
+          description: Danh sách role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      tags: [Roles]
+      summary: Tạo role mới
+      operationId: createRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleRequest"
+      responses:
+        "201":
+          description: Role đã được tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /v1/roles/{roleId}/permissions:
+    get:
+      tags: [Roles]
+      summary: Danh sách permission của role
+      operationId: getRolePermissions
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Danh sách permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      tags: [Roles]
+      summary: Gán permission cho role
+      operationId: assignPermissionToRole
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignPermissionRequest"
+      responses:
+        "200":
+          description: Permission đã được gán
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /v1/permissions:
+    get:
+      tags: [Permissions]
+      summary: Danh sách permission
+      operationId: listPermissions
+      responses:
+        "200":
+          description: Danh sách permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      tags: [Permissions]
+      summary: Tạo permission mới
+      operationId: createPermission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePermissionRequest"
+      responses:
+        "201":
+          description: Permission đã được tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Metadata:
+      type: object
+      required: [timestamp, requestId, correlationId, tenantId]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+        correlationId:
+          type: string
+        traceId:
+          type: string
+        tenantId:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [data, metadata]
+      properties:
+        data:
+          type: object
+          required: [username, password]
+          properties:
+            username: { type: string }
+            password: { type: string, format: password }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    LoginResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            accessToken: { type: string }
+            refreshToken: { type: string }
+            expiresIn: { type: integer, description: "Seconds until access token expires" }
+            user:
+              $ref: "#/components/schemas/UserDto"
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    LogoutRequest:
+      type: object
+      required: [data, metadata]
+      properties:
+        data:
+          type: object
+          required: [refreshToken]
+          properties:
+            refreshToken: { type: string }
+            allDevices:
+              type: boolean
+              default: false
+              description: "true = đăng xuất tất cả thiết bị"
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    RefreshTokenRequest:
+      type: object
+      required: [data, metadata]
+      properties:
+        data:
+          type: object
+          required: [refreshToken]
+          properties:
+            refreshToken: { type: string }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    ForgotPasswordRequest:
+      type: object
+      required: [data, metadata]
+      properties:
+        data:
+          type: object
+          required: [email]
+          properties:
+            email: { type: string, format: email }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    ResetPasswordRequest:
+      type: object
+      required: [data, metadata]
+      properties:
+        data:
+          type: object
+          required: [token, newPassword]
+          properties:
+            token: { type: string }
+            newPassword: { type: string, format: password, minLength: 8 }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    ChangePasswordRequest:
+      type: object
+      required: [data, metadata]
+      properties:
+        data:
+          type: object
+          required: [currentPassword, newPassword]
+          properties:
+            currentPassword: { type: string, format: password }
+            newPassword: { type: string, format: password, minLength: 8 }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    CreateUserRequest:
+      type: object
+      required: [data, metadata]
+      properties:
+        data:
+          type: object
+          required: [username, email, password, roleId]
+          properties:
+            username: { type: string, minLength: 3, maxLength: 50 }
+            email: { type: string, format: email }
+            password: { type: string, format: password, minLength: 8 }
+            fullName: { type: string }
+            roleId: { type: string, format: uuid }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    UpdateUserRequest:
+      type: object
+      required: [data, metadata]
+      properties:
+        data:
+          type: object
+          properties:
+            email: { type: string, format: email }
+            fullName: { type: string }
+            status:
+              type: string
+              enum: [ACTIVE, INACTIVE, LOCKED]
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    ChangeRoleRequest:
+      type: object
+      required: [data, metadata]
+      properties:
+        data:
+          type: object
+          required: [roleId]
+          properties:
+            roleId: { type: string, format: uuid }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    CreateRoleRequest:
+      type: object
+      required: [data, metadata]
+      properties:
+        data:
+          type: object
+          required: [name]
+          properties:
+            name: { type: string }
+            description: { type: string }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    AssignPermissionRequest:
+      type: object
+      required: [data, metadata]
+      properties:
+        data:
+          type: object
+          required: [permissionIds]
+          properties:
+            permissionIds:
+              type: array
+              items: { type: string, format: uuid }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    CreatePermissionRequest:
+      type: object
+      required: [data, metadata]
+      properties:
+        data:
+          type: object
+          required: [code, resource, action]
+          properties:
+            code: { type: string, example: "user:read" }
+            resource: { type: string, example: "user" }
+            action: { type: string, example: "read" }
+            description: { type: string }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    UserDto:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string, format: email }
+        fullName: { type: string }
+        role: { type: string, enum: [ADMIN, TEACHER, STUDENT, ACADEMIC_STAFF] }
+        status: { type: string, enum: [ACTIVE, INACTIVE, LOCKED] }
+        createdAt: { type: string, format: date-time }
+
+    RoleDto:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    PermissionDto:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        resource: { type: string }
+        action: { type: string }
+        description: { type: string }
+
+    UserResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/UserDto"
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    UserListResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/UserDto"
+            total: { type: integer }
+            page: { type: integer }
+            pageSize: { type: integer }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    RoleResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/RoleDto"
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    RoleListResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/RoleDto"
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    PermissionResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/PermissionDto"
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    PermissionListResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/PermissionDto"
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    SuccessResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            message: { type: string }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+    HealthResponse:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, error] }
+        details:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  message: { type: string }
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+
+  responses:
+    BadRequest:
+      description: Dữ liệu đầu vào không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Chưa xác thực hoặc token không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Không có quyền thực hiện thao tác này
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Không tìm thấy tài nguyên
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Dữ liệu đã tồn tại (username/email trùng)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnprocessableEntity:
+      description: Không thể xử lý yêu cầu
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

@@ -1,0 +1,255 @@
+asyncapi: 2.6.0
+info:
+  title: Auth Service Events
+  version: 0.1.0
+  description: |
+    Event contract cho pbc-auth. Publish các sự kiện xác thực và quản lý user
+    lên Kafka để các PBC khác (pbc-notification, pbc-student-management) consume.
+
+servers:
+  localKafka:
+    url: localhost:9092
+    protocol: kafka
+    description: Local Kafka broker (Confluent Platform)
+
+defaultContentType: application/json
+
+channels:
+  pbc.auth.user.logged-in:
+    description: Phát khi người dùng đăng nhập thành công
+    bindings:
+      kafka:
+        topic: pbc.auth.user.logged-in
+        partitions: 3
+        replicas: 1
+    publish:
+      operationId: publishUserLoggedIn
+      summary: User đăng nhập thành công
+      message:
+        $ref: "#/components/messages/UserLoggedIn"
+
+  pbc.auth.user.logged-out:
+    description: Phát khi người dùng đăng xuất
+    bindings:
+      kafka:
+        topic: pbc.auth.user.logged-out
+        partitions: 3
+        replicas: 1
+    publish:
+      operationId: publishUserLoggedOut
+      summary: User đăng xuất
+      message:
+        $ref: "#/components/messages/UserLoggedOut"
+
+  pbc.auth.user.created:
+    description: Phát khi tạo tài khoản mới
+    bindings:
+      kafka:
+        topic: pbc.auth.user.created
+        partitions: 3
+        replicas: 1
+    publish:
+      operationId: publishUserCreated
+      summary: Tài khoản mới được tạo
+      message:
+        $ref: "#/components/messages/UserCreated"
+
+  pbc.auth.user.role-changed:
+    description: Phát khi thay đổi role của user
+    bindings:
+      kafka:
+        topic: pbc.auth.user.role-changed
+        partitions: 3
+        replicas: 1
+    publish:
+      operationId: publishUserRoleChanged
+      summary: Role của user thay đổi
+      message:
+        $ref: "#/components/messages/UserRoleChanged"
+
+components:
+  messages:
+    UserLoggedIn:
+      name: UserLoggedIn
+      title: User Logged In
+      contentType: application/json
+      headers:
+        type: object
+        properties:
+          X-Tenant-Id:
+            type: string
+            description: Tenant context
+          X-Correlation-Id:
+            type: string
+            description: Correlation ID để trace request
+      payload:
+        $ref: "#/components/schemas/UserLoggedInPayload"
+      examples:
+        - name: example
+          payload:
+            eventId: "550e8400-e29b-41d4-a716-446655440000"
+            eventType: "pbc.auth.user.logged-in"
+            schemaVersion: "1.0"
+            occurredAt: "2026-04-15T10:00:00.000Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-xyz789"
+            data:
+              userId: "user-uuid-001"
+              username: "john.doe"
+              role: "TEACHER"
+
+    UserLoggedOut:
+      name: UserLoggedOut
+      title: User Logged Out
+      contentType: application/json
+      headers:
+        type: object
+        properties:
+          X-Tenant-Id: { type: string }
+          X-Correlation-Id: { type: string }
+      payload:
+        $ref: "#/components/schemas/UserLoggedOutPayload"
+      examples:
+        - name: example
+          payload:
+            eventId: "550e8400-e29b-41d4-a716-446655440001"
+            eventType: "pbc.auth.user.logged-out"
+            schemaVersion: "1.0"
+            occurredAt: "2026-04-15T11:00:00.000Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-abc123"
+            data:
+              userId: "user-uuid-001"
+
+    UserCreated:
+      name: UserCreated
+      title: User Created
+      contentType: application/json
+      headers:
+        type: object
+        properties:
+          X-Tenant-Id: { type: string }
+          X-Correlation-Id: { type: string }
+      payload:
+        $ref: "#/components/schemas/UserCreatedPayload"
+      examples:
+        - name: example
+          payload:
+            eventId: "550e8400-e29b-41d4-a716-446655440002"
+            eventType: "pbc.auth.user.created"
+            schemaVersion: "1.0"
+            occurredAt: "2026-04-15T09:00:00.000Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-def456"
+            data:
+              userId: "user-uuid-002"
+              username: "jane.smith"
+              email: "jane@example.com"
+              role: "STUDENT"
+
+    UserRoleChanged:
+      name: UserRoleChanged
+      title: User Role Changed
+      contentType: application/json
+      headers:
+        type: object
+        properties:
+          X-Tenant-Id: { type: string }
+          X-Correlation-Id: { type: string }
+      payload:
+        $ref: "#/components/schemas/UserRoleChangedPayload"
+      examples:
+        - name: example
+          payload:
+            eventId: "550e8400-e29b-41d4-a716-446655440003"
+            eventType: "pbc.auth.user.role-changed"
+            schemaVersion: "1.0"
+            occurredAt: "2026-04-15T14:00:00.000Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-ghi789"
+            data:
+              userId: "user-uuid-001"
+              oldRole: "STUDENT"
+              newRole: "TEACHER"
+
+  schemas:
+    EventEnvelope:
+      type: object
+      required: [eventId, eventType, schemaVersion, occurredAt, tenantId, correlationId, data]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: UUID duy nhất, dùng cho idempotency
+        eventType:
+          type: string
+          description: Tên topic đầy đủ
+        schemaVersion:
+          type: string
+          description: Version schema payload
+        occurredAt:
+          type: string
+          format: date-time
+        tenantId:
+          type: string
+        correlationId:
+          type: string
+
+    UserLoggedInPayload:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [userId, username, role]
+              properties:
+                userId: { type: string, format: uuid }
+                username: { type: string }
+                role:
+                  type: string
+                  enum: [ADMIN, TEACHER, STUDENT, ACADEMIC_STAFF]
+
+    UserLoggedOutPayload:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string, format: uuid }
+
+    UserCreatedPayload:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [userId, username, email, role]
+              properties:
+                userId: { type: string, format: uuid }
+                username: { type: string }
+                email: { type: string, format: email }
+                role:
+                  type: string
+                  enum: [ADMIN, TEACHER, STUDENT, ACADEMIC_STAFF]
+
+    UserRoleChangedPayload:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [userId, oldRole, newRole]
+              properties:
+                userId: { type: string, format: uuid }
+                oldRole:
+                  type: string
+                  enum: [ADMIN, TEACHER, STUDENT, ACADEMIC_STAFF]
+                newRole:
+                  type: string
+                  enum: [ADMIN, TEACHER, STUDENT, ACADEMIC_STAFF]

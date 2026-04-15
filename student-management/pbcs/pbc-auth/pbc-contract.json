@@ -1,0 +1,119 @@
+{
+  "pbcId": "auth",
+  "version": "0.1.0",
+  "name": "Auth Service",
+  "description": "Cung cấp xác thực tập trung (JWT + Refresh Token) và phân quyền RBAC cho toàn bộ Student Management Portal. Đây là PBC nền tảng — mọi PBC khác phụ thuộc vào token do PBC này phát hành.",
+  "category": "Security",
+  "domain": "authentication-authorization",
+  "type": "full",
+
+  "sla": {
+    "availability": 99.9,
+    "responseTimeMs": 200,
+    "throughput": 500
+  },
+
+  "technologies": {
+    "ui": "react",
+    "api": "nodejs",
+    "db": "postgresql",
+    "uiLibrary": "ant-design",
+    "messaging": "kafka"
+  },
+
+  "messaging": {
+    "broker": "kafka",
+    "jetstream": false,
+    "topicPrefix": "pbc.auth",
+    "notes": "Dùng Kafka thay NATS vì toàn bộ student-management-portal đã chọn Kafka làm event bus chuẩn (xem app-contract.json). Consumer group: cg.auth"
+  },
+
+  "slots": ["login-form", "profile", "user-management", "role-management"],
+
+  "hooks": {
+    "before": ["validatePayload", "enforceTenant", "hashPassword"],
+    "after": ["auditLog", "emitDomainEvent", "invalidateCache"]
+  },
+
+  "capabilities": {
+    "ui": {
+      "widgets": ["notification-bell", "user-avatar-menu"],
+      "slots": ["login-form", "profile", "user-management", "role-management"],
+      "designTokens": ["--pbc-primary-color", "--pbc-auth-accent", "--pbc-border-radius", "--pbc-font-family"],
+      "uiLibrary": "ant-design"
+    },
+    "api": {
+      "supportsMetadata": true,
+      "endpoints": [
+        "/v1/auth/login",
+        "/v1/auth/logout",
+        "/v1/auth/refresh",
+        "/v1/auth/forgot-password",
+        "/v1/auth/reset-password",
+        "/v1/auth/change-password",
+        "/v1/users",
+        "/v1/roles",
+        "/v1/permissions"
+      ]
+    },
+    "uiInteraction": {
+      "outputs": ["pbc.auth.user.logged-in", "pbc.auth.user.logged-out"],
+      "inputs": []
+    },
+    "businessEvents": {
+      "produces": [
+        "pbc.auth.user.logged-in",
+        "pbc.auth.user.logged-out",
+        "pbc.auth.user.created",
+        "pbc.auth.user.role-changed"
+      ],
+      "consumes": []
+    }
+  },
+
+  "permissions": [
+    "user:read",
+    "user:write",
+    "user:delete",
+    "role:read",
+    "role:write",
+    "role:delete",
+    "permission:read",
+    "permission:write"
+  ],
+
+  "properties": {
+    "tenantResolution": "jwt-claim",
+    "dockerLayout": "docker/Dockerfile.ui and docker/Dockerfile.api",
+    "dataClassification": "sensitive — password_hash và token phải không bao giờ log ra; attributes JSON không chứa secret",
+    "requiredEnvVars": [
+      "DATABASE_URL",
+      "JWT_SECRET",
+      "JWT_EXPIRATION",
+      "JWT_REFRESH_EXPIRATION",
+      "KAFKA_BROKERS",
+      "KAFKA_GROUP_ID",
+      "PORT",
+      "SMTP_HOST",
+      "SMTP_PORT",
+      "SMTP_USER",
+      "SMTP_PASSWORD"
+    ],
+    "apiAuthNotes": "GET /health và GET /ready là public. POST /v1/auth/login, /v1/auth/refresh, /v1/auth/forgot-password, /v1/auth/reset-password là public. Tất cả endpoint còn lại yêu cầu JWT. CRUD /v1/users và /v1/roles yêu cầu thêm role ADMIN."
+  },
+
+  "config": {
+    "webhookUrl": "",
+    "aiPromptRegistry": ""
+  },
+
+  "i18n": {
+    "defaultLocale": "vi",
+    "supportedLocales": ["vi", "en"]
+  },
+
+  "extensions": {
+    "supportAIHooks": true,
+    "allowCustomSlots": false
+  }
+}

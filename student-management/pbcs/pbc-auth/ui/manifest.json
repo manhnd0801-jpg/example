@@ -1,0 +1,26 @@
+{
+  "pbcId": "auth",
+  "version": "0.1.0",
+  "scope": "pbc_auth",
+  "module": "./bootstrap",
+  "slots": [
+    { "id": "login-form",       "component": "LoginSlot" },
+    { "id": "profile",          "component": "ProfileSlot" },
+    { "id": "user-management",  "component": "UserManagementSlot" }
+  ],
+  "designTokens": [
+    "--pbc-primary-color",
+    "--pbc-auth-accent",
+    "--pbc-border-radius",
+    "--pbc-font-family"
+  ],
+  "defaultLocale": "vi",
+  "supportedLocales": ["vi", "en"],
+  "requiredPermissions": ["user:read", "user:write", "user:delete", "role:read"],
+  "requiredEvents": [
+    "pbc.auth.user.logged-in",
+    "pbc.auth.user.logged-out",
+    "pbc.auth.user.created",
+    "pbc.auth.user.role-changed"
+  ]
+}

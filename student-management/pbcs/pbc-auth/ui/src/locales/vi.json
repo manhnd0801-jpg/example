@@ -1,0 +1,25 @@
+{
+  "auth": {
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "username": "Tên đăng nhập",
+    "password": "Mật khẩu",
+    "forgotPassword": "Quên mật khẩu?",
+    "changePassword": "Đổi mật khẩu",
+    "currentPassword": "Mật khẩu hiện tại",
+    "newPassword": "Mật khẩu mới",
+    "confirmPassword": "Xác nhận mật khẩu mới",
+    "loginSuccess": "Đăng nhập thành công",
+    "loginFailed": "Tên đăng nhập hoặc mật khẩu không đúng"
+  },
+  "user": {
+    "title": "Quản lý Người dùng",
+    "create": "Thêm người dùng",
+    "edit": "Sửa người dùng",
+    "delete": "Xóa người dùng",
+    "email": "Email",
+    "fullName": "Họ tên",
+    "role": "Vai trò",
+    "status": "Trạng thái"
+  }
+}

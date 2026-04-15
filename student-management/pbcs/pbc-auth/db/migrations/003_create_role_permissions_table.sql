@@ -1,0 +1,11 @@
+-- AI-GENERATED
+-- Migration 003: Create role_permissions join table
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role_id       UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+  tenant_id     VARCHAR(100) NOT NULL,
+  PRIMARY KEY (role_id, permission_id)
+);
+
+CREATE INDEX idx_role_permissions_role_id ON role_permissions(role_id);
+CREATE INDEX idx_role_permissions_permission_id ON role_permissions(permission_id);
