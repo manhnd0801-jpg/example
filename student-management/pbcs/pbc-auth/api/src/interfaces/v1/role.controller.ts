@@ -8,11 +8,11 @@ import { Roles } from '../../core/guards/roles.guard';
 import { buildMetadata } from '../metadata.helper';
 
 @Controller('v1/roles')
-@Roles('ADMIN')   // Chỉ ADMIN được quản lý roles
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
   @Get()
+  @Roles('ADMIN', 'ACADEMIC_STAFF')   // Đọc danh sách role — cần để tạo user
   async list(@Req() req: any) {
     const tenantId = req.user.tenantId;
     const items = await this.roleService.listRoles(tenantId);
@@ -23,6 +23,7 @@ export class RoleController {
   }
 
   @Get(':roleId')
+  @Roles('ADMIN', 'ACADEMIC_STAFF')   // Đọc chi tiết role
   async getById(@Param('roleId') roleId: string, @Req() req: any) {
     const tenantId = req.user.tenantId;
     const role = await this.roleService.findRoleById(roleId, tenantId);
@@ -33,6 +34,7 @@ export class RoleController {
   }
 
   @Post()
+  @Roles('ADMIN')   // Chỉ ADMIN tạo role mới
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() body: any, @Req() req: any) {
     const tenantId = req.user.tenantId;
@@ -45,6 +47,7 @@ export class RoleController {
   }
 
   @Put(':roleId')
+  @Roles('ADMIN')   // Chỉ ADMIN sửa role
   async update(@Param('roleId') roleId: string, @Body() body: any, @Req() req: any) {
     const tenantId = req.user.tenantId;
     const { name, description } = body.data;
@@ -56,6 +59,7 @@ export class RoleController {
   }
 
   @Delete(':roleId')
+  @Roles('ADMIN')   // Chỉ ADMIN xóa role
   @HttpCode(HttpStatus.OK)
   async delete(@Param('roleId') roleId: string, @Req() req: any) {
     const tenantId = req.user.tenantId;

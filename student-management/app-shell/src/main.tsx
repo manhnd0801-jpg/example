@@ -45,11 +45,25 @@ function LoginPage({ authEntry }: { authEntry: PBCEntry }) {
     localStorage.setItem("accessToken", data.accessToken);
     localStorage.setItem("refreshToken", data.refreshToken);
     localStorage.setItem("tenantId", TENANT_ID);
-    // Lưu user info vào sessionStorage để Navbar hiển thị
+
+    // Map user object sang format đầy đủ cho Navbar và ProfileSlot
     if (data.user) {
-      sessionStorage.setItem("currentUser", JSON.stringify(data.user));
-      window.dispatchEvent(new CustomEvent("shell:user-changed", { detail: data.user }));
+      const u = data.user as {
+        id?: string; username?: string; role?: string;
+        email?: string; fullName?: string; status?: string;
+      };
+      const userInfo = {
+        userId:   u.id       ?? "",
+        username: u.username ?? "",
+        role:     u.role     ?? "",
+        email:    u.email    ?? "",
+        fullName: u.fullName ?? "",
+        status:   u.status   ?? "",
+      };
+      sessionStorage.setItem("currentUser", JSON.stringify(userInfo));
+      window.dispatchEvent(new CustomEvent("shell:user-changed", { detail: userInfo }));
     }
+
     const returnTo = sessionStorage.getItem("returnTo") ?? appContract.appShell.defaultRoute;
     sessionStorage.removeItem("returnTo");
     window.location.href = returnTo;

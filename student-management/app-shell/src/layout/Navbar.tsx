@@ -1,7 +1,7 @@
 // AI-GENERATED
 import React, { useEffect, useState } from "react";
 import { Layout, Avatar, Dropdown, Space, Typography, Tag } from "antd";
-import { UserOutlined, LogoutOutlined, DownOutlined } from "@ant-design/icons";
+import { UserOutlined, LogoutOutlined, DownOutlined, ProfileOutlined } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { appContract } from "../config/app-contract";
 
@@ -12,6 +12,9 @@ interface UserInfo {
   userId: string;
   username: string;
   role: string;
+  email?: string;
+  fullName?: string;
+  status?: string;
 }
 
 const ROLE_COLOR: Record<string, string> = {
@@ -44,7 +47,7 @@ export const Navbar: React.FC = () => {
 
   const userMenuItems: MenuProps["items"] = [
     {
-      key: "username",
+      key: "info",
       label: (
         <div style={{ padding: "4px 0" }}>
           <div style={{ fontWeight: 600 }}>{user?.username}</div>
@@ -54,6 +57,13 @@ export const Navbar: React.FC = () => {
         </div>
       ),
       disabled: true,
+    },
+    { type: "divider" },
+    {
+      key: "profile",
+      icon: <ProfileOutlined />,
+      label: "Hồ sơ cá nhân",
+      onClick: () => { window.location.href = "/profile"; },
     },
     { type: "divider" },
     {
@@ -81,14 +91,12 @@ export const Navbar: React.FC = () => {
         boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
       }}
     >
-      {/* Logo + App name */}
       <Space>
         <Text strong style={{ color: "#fff", fontSize: 16 }}>
           🎓 {appContract.name}
         </Text>
       </Space>
 
-      {/* User menu */}
       {user && (
         <Dropdown menu={{ items: userMenuItems }} trigger={["click"]} placement="bottomRight">
           <Space style={{ cursor: "pointer", color: "#fff" }}>

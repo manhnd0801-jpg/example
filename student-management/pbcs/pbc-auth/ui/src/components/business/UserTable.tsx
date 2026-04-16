@@ -23,6 +23,8 @@ interface UserTableProps {
   page: number;
   pageSize?: number;
   loading?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onEdit: (user: UserDto) => void;
   onDelete: (userId: string) => void;
   onPageChange: (page: number) => void;
@@ -30,7 +32,8 @@ interface UserTableProps {
 
 const UserTable: React.FC<UserTableProps> = ({
   users, total, page, pageSize = 20,
-  loading, onEdit, onDelete, onPageChange,
+  loading, canEdit = true, canDelete = true,
+  onEdit, onDelete, onPageChange,
 }) => {
   const columns: ColumnsType<UserDto> = [
     { title: 'Tên đăng nhập', dataIndex: 'username', key: 'username' },
@@ -50,16 +53,21 @@ const UserTable: React.FC<UserTableProps> = ({
       title: 'Thao tác', key: 'actions',
       render: (_, record) => (
         <Space>
-          <Button icon={<EditOutlined />} size="small" onClick={() => onEdit(record)}>
-            Sửa
-          </Button>
-          <Popconfirm
-            title="Xác nhận xóa người dùng này?"
-            onConfirm={() => onDelete(record.id)}
-            okText="Xóa" cancelText="Hủy"
-          >
-            <Button icon={<DeleteOutlined />} size="small" danger>Xóa</Button>
-          </Popconfirm>
+          {canEdit && (
+            <Button icon={<EditOutlined />} size="small" onClick={() => onEdit(record)}>
+              Sửa
+            </Button>
+          )}
+          {canDelete && (
+            <Popconfirm
+              title="Xác nhận xóa người dùng này?"
+              onConfirm={() => onDelete(record.id)}
+              okText="Xóa" cancelText="Hủy"
+            >
+              <Button icon={<DeleteOutlined />} size="small" danger>Xóa</Button>
+            </Popconfirm>
+          )}
+          {!canEdit && !canDelete && <span style={{ color: '#999', fontSize: 12 }}>Chỉ xem</span>}
         </Space>
       ),
     },
