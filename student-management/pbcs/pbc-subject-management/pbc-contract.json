@@ -1,0 +1,108 @@
+{
+  "pbcId": "subject-management",
+  "version": "1.0.0",
+  "name": "Subject Management",
+  "description": "Quản lý danh mục môn học bao gồm thông tin tín chỉ, loại môn học và gán môn học vào lớp và chương trình. Là nguồn dữ liệu chính cho thông tin môn học.",
+  "category": "Academic",
+  "domain": "subject-catalog",
+  "type": "full",
+
+  "sla": {
+    "availability": 99.9,
+    "responseTimeMs": 200,
+    "throughput": 700
+  },
+
+  "technologies": {
+    "ui": "react",
+    "api": "nodejs",
+    "db": "postgresql",
+    "uiLibrary": "ant-design",
+    "messaging": "kafka"
+  },
+
+  "messaging": {
+    "broker": "kafka",
+    "jetstream": false,
+    "topicPrefix": "pbc.subject-management",
+    "notes": "Dùng Kafka thay NATS vì toàn bộ student-management-portal đã chọn Kafka làm event bus chuẩn. Consumer group: cg.subject-mgmt"
+  },
+
+  "slots": ["subject-list", "subject-form", "subject-detail", "subject-assign"],
+
+  "hooks": {
+    "before": ["validatePayload", "enforceTenant", "validateCredits"],
+    "after": ["auditLog", "emitDomainEvent", "updateSubjectIndex"]
+  },
+
+  "capabilities": {
+    "ui": {
+      "widgets": ["subject-credit-calculator", "subject-type-filter"],
+      "slots": ["subject-list", "subject-form", "subject-detail", "subject-assign"],
+      "designTokens": ["--pbc-primary-color", "--pbc-subject-accent", "--pbc-border-radius", "--pbc-font-family"],
+      "uiLibrary": "ant-design"
+    },
+    "api": {
+      "supportsMetadata": true,
+      "endpoints": [
+        "/v1/subjects",
+        "/v1/subjects/:id",
+        "/v1/subjects/:id/assign-to-class",
+        "/v1/subjects/:id/assign-to-course"
+      ]
+    },
+    "uiInteraction": {
+      "outputs": ["pbc.subject-management.subject.selected"],
+      "inputs": ["pbc.course-management.course.created"]
+    },
+    "businessEvents": {
+      "produces": [
+        "pbc.subject-management.subject.created",
+        "pbc.subject-management.subject.updated",
+        "pbc.subject-management.subject.assigned-to-class",
+        "pbc.subject-management.subject.assigned-to-course"
+      ],
+      "consumes": [
+        "pbc.course-management.course.created"
+      ]
+    }
+  },
+
+  "permissions": [
+    "subject:read",
+    "subject:write",
+    "subject:delete",
+    "subject:assign-to-class",
+    "subject:assign-to-course"
+  ],
+
+  "properties": {
+    "tenantResolution": "jwt-claim",
+    "dockerLayout": "docker/Dockerfile.ui and docker/Dockerfile.api",
+    "dataClassification": "internal — subject data không nhạy cảm; attributes JSON có thể chứa thông tin curriculum",
+    "requiredEnvVars": [
+      "DATABASE_URL",
+      "JWT_SECRET",
+      "KAFKA_BROKERS",
+      "KAFKA_GROUP_ID",
+      "PORT",
+      "CORS_ORIGIN"
+    ],
+    "apiAuthNotes": "GET /health là public. Tất cả endpoint khác yêu cầu JWT. CRUD operations yêu cầu role ADMIN hoặc ACADEMIC_STAFF."
+  },
+
+  "config": {
+    "webhookUrl": "",
+    "aiPromptRegistry": ""
+  },
+
+  "i18n": {
+    "defaultLocale": "vi",
+    "supportedLocales": ["vi", "en"]
+  },
+
+  "extensions": {
+    "supportAIHooks": true,
+    "allowCustomSlots": false
+  }
+}

@@ -2,30 +2,69 @@
   "version": "1.0",
   "pbcList": [
     {
-      "pbcId": "student-profile",
+      "pbcId": "pbc-auth",
       "version": "1.0.0",
-      "remoteUrl": "http://localhost:3001/assets/remoteEntry.js",
-      "scope": "pbc_student_profile",
+      "remoteUrl": "http://localhost:3011/assets/remoteEntry.js",
+      "scope": "pbc_auth",
       "module": "./bootstrap",
-      "routePrefix": "/students",
+      "routePrefix": "/auth",
+      "label": "Đăng nhập & Phân quyền",
+      "icon": "UserOutlined",
       "enabled": true
     },
     {
-      "pbcId": "course-management",
+      "pbcId": "pbc-student-management",
       "version": "1.0.0",
-      "remoteUrl": "http://localhost:3002/assets/remoteEntry.js",
+      "remoteUrl": "http://localhost:3012/assets/remoteEntry.js",
+      "scope": "pbc_student_management",
+      "module": "./bootstrap",
+      "routePrefix": "/students",
+      "label": "Quản lý Sinh viên",
+      "icon": "TeamOutlined",
+      "enabled": true
+    },
+    {
+      "pbcId": "pbc-class-management",
+      "version": "1.0.0",
+      "remoteUrl": "http://localhost:3013/assets/remoteEntry.js",
+      "scope": "pbc_class_management",
+      "module": "./bootstrap",
+      "routePrefix": "/classes",
+      "label": "Quản lý Lớp học",
+      "icon": "BookOutlined",
+      "enabled": true
+    },
+    {
+      "pbcId": "pbc-course-management",
+      "version": "1.0.0",
+      "remoteUrl": "http://localhost:3014/assets/remoteEntry.js",
       "scope": "pbc_course_management",
       "module": "./bootstrap",
       "routePrefix": "/courses",
+      "label": "Quản lý Khóa học",
+      "icon": "ReadOutlined",
       "enabled": true
     },
     {
-      "pbcId": "enrollment-management",
+      "pbcId": "pbc-subject-management",
       "version": "1.0.0",
-      "remoteUrl": "http://localhost:3003/assets/remoteEntry.js",
-      "scope": "pbc_enrollment_management",
+      "remoteUrl": "http://localhost:3015/assets/remoteEntry.js",
+      "scope": "pbc_subject_management",
       "module": "./bootstrap",
-      "routePrefix": "/enrollments",
+      "routePrefix": "/subjects",
+      "label": "Quản lý Môn học",
+      "icon": "FileTextOutlined",
+      "enabled": true
+    },
+    {
+      "pbcId": "pbc-notification",
+      "version": "1.0.0",
+      "remoteUrl": "http://localhost:3016/assets/remoteEntry.js",
+      "scope": "pbc_notification",
+      "module": "./bootstrap",
+      "routePrefix": "/notifications",
+      "label": "Thông báo",
+      "icon": "BellOutlined",
       "enabled": true
     }
   ]

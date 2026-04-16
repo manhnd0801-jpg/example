@@ -1,0 +1,209 @@
+# AI-GENERATED
+asyncapi: 2.6.0
+info:
+  title: Subject Management Events
+  version: 1.0.0
+  description: Event specifications for Subject Management PBC
+  contact:
+    name: Subject Management Team
+    email: support@example.com
+
+servers:
+  kafka:
+    url: kafka:29092
+    protocol: kafka
+    description: Kafka broker for event communication
+
+defaultContentType: application/json
+
+channels:
+  pbc.subject-management.subject.created:
+    description: Published when a new subject is created
+    publish:
+      operationId: publishSubjectCreated
+      message:
+        $ref: '#/components/messages/SubjectCreated'
+
+  pbc.subject-management.subject.updated:
+    description: Published when a subject is updated
+    publish:
+      operationId: publishSubjectUpdated
+      message:
+        $ref: '#/components/messages/SubjectUpdated'
+
+  pbc.subject-management.subject.assigned-to-class:
+    description: Published when a subject is assigned to a class
+    publish:
+      operationId: publishSubjectAssignedToClass
+      message:
+        $ref: '#/components/messages/SubjectAssignedToClass'
+
+  pbc.subject-management.subject.assigned-to-course:
+    description: Published when a subject is assigned to a course
+    publish:
+      operationId: publishSubjectAssignedToCourse
+      message:
+        $ref: '#/components/messages/SubjectAssignedToCourse'
+
+  pbc.course-management.course.created:
+    description: Consumed when a new course is created
+    subscribe:
+      operationId: handleCourseCreated
+      message:
+        $ref: '#/components/messages/CourseCreated'
+
+components:
+  messages:
+    SubjectCreated:
+      name: SubjectCreated
+      title: Subject Created Event
+      summary: Event published when a new subject is created
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: SubjectCreatedExample
+          summary: Example of subject created event
+          payload:
+            eventId: "evt_012e3456-e89b-12d3-a456-426614174003"
+            eventType: "pbc.subject-management.subject.created"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T13:00:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-401"
+            data:
+              subjectId: "012e3456-e89b-12d3-a456-426614174003"
+              subjectCode: "CS101"
+              subjectName: "Introduction to Programming"
+              credits: 3
+              tenantId: "tenant-001"
+
+    SubjectUpdated:
+      name: SubjectUpdated
+      title: Subject Updated Event
+      summary: Event published when a subject is updated
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: SubjectUpdatedExample
+          summary: Example of subject updated event
+          payload:
+            eventId: "evt_123e4567-e89b-12d3-a456-426614174004"
+            eventType: "pbc.subject-management.subject.updated"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T13:05:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-402"
+            data:
+              subjectId: "012e3456-e89b-12d3-a456-426614174003"
+              updatedFields:
+                description: "Updated subject description"
+                practiceCredits: 2
+              tenantId: "tenant-001"
+
+    SubjectAssignedToClass:
+      name: SubjectAssignedToClass
+      title: Subject Assigned to Class Event
+      summary: Event published when a subject is assigned to a class
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: SubjectAssignedToClassExample
+          summary: Example of subject assigned to class event
+          payload:
+            eventId: "evt_234e5678-e89b-12d3-a456-426614174005"
+            eventType: "pbc.subject-management.subject.assigned-to-class"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T13:10:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-403"
+            data:
+              subjectId: "012e3456-e89b-12d3-a456-426614174003"
+              classId: "456e7890-e89b-12d3-a456-426614174001"
+              semester: 1
+              teacherId: "345e6789-e89b-12d3-a456-426614174004"
+              tenantId: "tenant-001"
+
+    SubjectAssignedToCourse:
+      name: SubjectAssignedToCourse
+      title: Subject Assigned to Course Event
+      summary: Event published when a subject is assigned to a course
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: SubjectAssignedToCourseExample
+          summary: Example of subject assigned to course event
+          payload:
+            eventId: "evt_345e6789-e89b-12d3-a456-426614174006"
+            eventType: "pbc.subject-management.subject.assigned-to-course"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T13:15:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-404"
+            data:
+              subjectId: "012e3456-e89b-12d3-a456-426614174003"
+              courseId: "789e0123-e89b-12d3-a456-426614174002"
+              semesterId: 1
+              isRequired: true
+              tenantId: "tenant-001"
+
+    CourseCreated:
+      name: CourseCreated
+      title: Course Created Event (Consumed)
+      summary: Event consumed when a new course is created
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+  schemas:
+    KafkaEnvelope:
+      type: object
+      required:
+        - eventId
+        - eventType
+        - schemaVersion
+        - occurredAt
+        - tenantId
+        - correlationId
+        - data
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Unique identifier for this event
+        eventType:
+          type: string
+          description: Type of event following pbc.{pbcId}.{aggregate}.{verb} pattern
+        schemaVersion:
+          type: string
+          description: Version of the event schema
+          default: "1.0"
+        occurredAt:
+          type: string
+          format: date-time
+          description: When the event occurred
+        tenantId:
+          type: string
+          description: Tenant identifier for multi-tenancy
+        correlationId:
+          type: string
+          description: Correlation ID for tracing related events
+        data:
+          type: object
+          description: Event-specific payload data
+
+  parameters:
+    tenantId:
+      description: Tenant identifier
+      schema:
+        type: string
+
+  operationTraits:
+    kafka:
+      bindings:
+        kafka:
+          groupId: cg.subject-mgmt
+          clientId: pbc-subject-management

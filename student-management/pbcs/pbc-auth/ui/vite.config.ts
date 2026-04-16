@@ -21,7 +21,7 @@ export default defineConfig({
       name: 'pbc_auth',
       filename: 'remoteEntry.js',
       exposes: {
-        './bootstrap':          './src/index.ts',
+        './bootstrap':          './src/bootstrap.ts',
         './LoginSlot':          './src/slots/LoginSlot',
         './ProfileSlot':        './src/slots/ProfileSlot',
         './UserManagementSlot': './src/slots/UserManagementSlot',

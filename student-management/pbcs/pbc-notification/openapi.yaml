@@ -1,0 +1,375 @@
+# AI-GENERATED
+openapi: 3.1.0
+info:
+  title: Notification & Audit API
+  description: API for managing notifications and audit logs
+  version: 1.0.0
+  contact:
+    name: Notification Team
+    email: support@example.com
+
+servers:
+  - url: http://localhost:3006/v1
+    description: Development server
+  - url: https://api.student-portal.com/v1
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the service
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /notifications:
+    get:
+      summary: List user notifications
+      description: Retrieve paginated notifications for the authenticated user
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: isRead
+          in: query
+          description: Filter by read status
+          schema:
+            type: boolean
+        - name: type
+          in: query
+          description: Filter by notification type
+          schema:
+            type: string
+            enum: [STUDENT_CREATED, STUDENT_STATUS_CHANGED, CLASS_CREATED, STUDENT_ASSIGNED, COURSE_CREATED, SUBJECT_ASSIGNED]
+        - name: fromDate
+          in: query
+          description: Filter notifications from this date
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          description: Filter notifications to this date
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+              example:
+                data:
+                  notifications:
+                    - id: "456e7890-e89b-12d3-a456-426614174001"
+                      title: "Sinh viên mới được tạo"
+                      content: "Sinh viên Nguyen Van A (STU2024001) đã được thêm vào hệ thống"
+                      type: "STUDENT_CREATED"
+                      isRead: false
+                      createdAt: "2024-01-15T10:30:00Z"
+                  unreadCount: 5
+                  pagination:
+                    page: 1
+                    pageSize: 20
+                    total: 45
+                    totalPages: 3
+                metadata:
+                  timestamp: "2024-01-15T14:30:00Z"
+                  requestId: "req_notif123"
+                  tenantId: "tenant-001"
+
+  /notifications/{id}/read:
+    patch:
+      summary: Mark notification as read
+      description: Mark a specific notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+              example:
+                data:
+                  id: "456e7890-e89b-12d3-a456-426614174001"
+                  isRead: true
+                  readAt: "2024-01-15T14:35:00Z"
+                metadata:
+                  timestamp: "2024-01-15T14:35:00Z"
+                  requestId: "req_read123"
+                  tenantId: "tenant-001"
+        '404':
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/read-all:
+    patch:
+      summary: Mark all notifications as read
+      description: Mark all unread notifications for the authenticated user as read
+      responses:
+        '200':
+          description: All notifications marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+              example:
+                data:
+                  markedCount: 5
+                  readAt: "2024-01-15T14:40:00Z"
+                metadata:
+                  timestamp: "2024-01-15T14:40:00Z"
+                  requestId: "req_readall123"
+                  tenantId: "tenant-001"
+
+  /audit-logs:
+    get:
+      summary: List audit logs (Admin only)
+      description: Retrieve paginated audit logs for system monitoring
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: eventType
+          in: query
+          description: Filter by event type
+          schema:
+            type: string
+        - name: aggregateId
+          in: query
+          description: Filter by aggregate ID
+          schema:
+            type: string
+        - name: userId
+          in: query
+          description: Filter by user ID
+          schema:
+            type: string
+            format: uuid
+        - name: fromDate
+          in: query
+          description: Filter logs from this date
+          schema:
+            type: string
+            format: date-time
+        - name: toDate
+          in: query
+          description: Filter logs to this date
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: List of audit logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+              example:
+                data:
+                  auditLogs:
+                    - id: "789e0123-e89b-12d3-a456-426614174002"
+                      eventType: "pbc.student-management.student.created"
+                      aggregateId: "123e4567-e89b-12d3-a456-426614174000"
+                      description: "Student STU2024001 created by admin"
+                      userId: "345e6789-e89b-12d3-a456-426614174004"
+                      occurredAt: "2024-01-15T10:30:00Z"
+                      eventData:
+                        studentId: "123e4567-e89b-12d3-a456-426614174000"
+                        studentCode: "STU2024001"
+                        action: "CREATE"
+                  pagination:
+                    page: 1
+                    pageSize: 20
+                    total: 1250
+                    totalPages: 63
+                metadata:
+                  timestamp: "2024-01-15T14:45:00Z"
+                  requestId: "req_audit123"
+                  tenantId: "tenant-001"
+        '403':
+          description: Access denied - Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    FlexiblePayload:
+      type: object
+      required:
+        - data
+        - metadata
+      properties:
+        data:
+          type: object
+          description: Business data payload
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+
+    Metadata:
+      type: object
+      required:
+        - timestamp
+        - requestId
+        - tenantId
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+        correlationId:
+          type: string
+        traceId:
+          type: string
+        tenantId:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        data:
+          type: "null"
+        metadata:
+          allOf:
+            - $ref: '#/components/schemas/Metadata'
+            - type: object
+              properties:
+                error:
+                  type: object
+                  properties:
+                    code:
+                      type: string
+                    message:
+                      type: string
+                    details:
+                      type: object
+
+    Notification:
+      type: object
+      required:
+        - id
+        - userId
+        - title
+        - content
+        - type
+        - isRead
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+        type:
+          type: string
+          enum: [STUDENT_CREATED, STUDENT_STATUS_CHANGED, CLASS_CREATED, STUDENT_ASSIGNED, COURSE_CREATED, SUBJECT_ASSIGNED, SYSTEM_ALERT]
+        isRead:
+          type: boolean
+          default: false
+        readAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          description: Additional notification metadata
+        createdAt:
+          type: string
+          format: date-time
+
+    AuditLog:
+      type: object
+      required:
+        - id
+        - eventType
+        - occurredAt
+        - tenantId
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          description: The type of event that occurred
+        aggregateId:
+          type: string
+          description: ID of the main entity involved
+        description:
+          type: string
+          description: Human-readable description of the event
+        userId:
+          type: string
+          format: uuid
+          description: User who triggered the event
+        eventData:
+          type: object
+          description: Complete event payload data
+        occurredAt:
+          type: string
+          format: date-time
+        tenantId:
+          type: string
+          description: Tenant identifier

@@ -21,42 +21,302 @@ services:
     depends_on:
       - zookeeper
 
-  app-shell:
-    build:
-      context: ./app-shell
-    ports:
-      - "3000:3000"
+  pbc-auth-db:
+    image: postgres:16-alpine
     environment:
-      - VITE_KAFKA_BROKERS=kafka:29092
-    depends_on:
-      - kafka
+      POSTGRES_DB: pbc_auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pbc_auth_db:/var/lib/postgresql/data
+      - ./pbcs/pbc-auth/db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pbc_auth"]
+      interval: 10s
+      retries: 5
 
-  pbc-student-profile:
+  pbc-auth-api:
     build:
-      context: ./pbcs/pbc-student-profile
+      context: ./pbcs/pbc-auth
+      dockerfile: docker/Dockerfile.api
     ports:
       - "3001:3001"
     environment:
-      - KAFKA_BROKERS=kafka:29092
+      NODE_ENV: development
+      PORT: 3001
+      LOG_LEVEL: info
+      DATABASE_URL: postgresql://postgres:postgres@pbc-auth-db:5432/pbc_auth
+      JWT_SECRET: dev-secret
+      JWT_EXPIRATION: 15m
+      JWT_REFRESH_EXPIRATION: 7d
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_GROUP_ID: cg.auth
+      KAFKA_CLIENT_ID: pbc-auth-api
+      TENANT_HEADER_NAME: X-Tenant-Id
+      CORS_ORIGIN: http://localhost:3011,http://localhost:3000
     depends_on:
+      - pbc-auth-db
       - kafka
 
-  pbc-course-management:
+  pbc-auth-ui:
     build:
-      context: ./pbcs/pbc-course-management
+      context: ./pbcs/pbc-auth
+      dockerfile: docker/Dockerfile.ui
+    ports:
+      - "3011:3011"
+    depends_on:
+      - pbc-auth-api
+
+  pbc-student-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: student_management
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pbc_student_db:/var/lib/postgresql/data
+      - ./pbcs/pbc-student-management/db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d student_management"]
+      interval: 10s
+      retries: 5
+
+  pbc-student-management-api:
+    build:
+      context: ./pbcs/pbc-student-management
+      dockerfile: docker/Dockerfile.api
     ports:
       - "3002:3002"
     environment:
-      - KAFKA_BROKERS=kafka:29092
+      NODE_ENV: development
+      PORT: 3002
+      DATABASE_URL: postgresql://postgres:postgres@pbc-student-db:5432/student_management
+      JWT_SECRET: dev-secret
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CLIENT_ID: pbc-student-management
+      KAFKA_CONSUMER_GROUP: cg.student-mgmt
+      KAFKA_GROUP_ID: cg.student-mgmt
+      CORS_ORIGIN: http://localhost:3012,http://localhost:3000
+      LOG_LEVEL: info
     depends_on:
+      - pbc-student-db
       - kafka
 
-  pbc-enrollment-management:
+  pbc-student-management-ui:
     build:
-      context: ./pbcs/pbc-enrollment-management
+      context: ./pbcs/pbc-student-management
+      dockerfile: docker/Dockerfile.ui
+    ports:
+      - "3012:3012"
+    depends_on:
+      - pbc-student-management-api
+
+  pbc-class-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: class_management
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - pbc_class_db:/var/lib/postgresql/data
+      - ./pbcs/pbc-class-management/db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d class_management"]
+      interval: 10s
+      retries: 5
+
+  pbc-class-management-api:
+    build:
+      context: ./pbcs/pbc-class-management
+      dockerfile: docker/Dockerfile.api
     ports:
       - "3003:3003"
     environment:
-      - KAFKA_BROKERS=kafka:29092
+      NODE_ENV: development
+      PORT: 3003
+      DATABASE_URL: postgresql://postgres:postgres@pbc-class-db:5432/class_management
+      JWT_SECRET: dev-secret
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CLIENT_ID: pbc-class-management
+      KAFKA_CONSUMER_GROUP: cg.class-mgmt
+      KAFKA_GROUP_ID: cg.class-mgmt
+      CORS_ORIGIN: http://localhost:3013,http://localhost:3000
+      LOG_LEVEL: info
     depends_on:
+      - pbc-class-db
       - kafka
+
+  pbc-class-management-ui:
+    build:
+      context: ./pbcs/pbc-class-management
+      dockerfile: docker/Dockerfile.ui
+    ports:
+      - "3013:3013"
+    depends_on:
+      - pbc-class-management-api
+
+  pbc-course-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: course_management
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - pbc_course_db:/var/lib/postgresql/data
+      - ./pbcs/pbc-course-management/db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d course_management"]
+      interval: 10s
+      retries: 5
+
+  pbc-course-management-api:
+    build:
+      context: ./pbcs/pbc-course-management
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "3004:3004"
+    environment:
+      NODE_ENV: development
+      PORT: 3004
+      DATABASE_URL: postgresql://postgres:postgres@pbc-course-db:5432/course_management
+      JWT_SECRET: dev-secret
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CLIENT_ID: pbc-course-management
+      KAFKA_CONSUMER_GROUP: cg.course-mgmt
+      KAFKA_GROUP_ID: cg.course-mgmt
+      CORS_ORIGIN: http://localhost:3014,http://localhost:3000
+      LOG_LEVEL: info
+    depends_on:
+      - pbc-course-db
+      - kafka
+
+  pbc-course-management-ui:
+    build:
+      context: ./pbcs/pbc-course-management
+      dockerfile: docker/Dockerfile.ui
+    ports:
+      - "3014:3014"
+    depends_on:
+      - pbc-course-management-api
+
+  pbc-subject-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: subject_management
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - pbc_subject_db:/var/lib/postgresql/data
+      - ./pbcs/pbc-subject-management/db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d subject_management"]
+      interval: 10s
+      retries: 5
+
+  pbc-subject-management-api:
+    build:
+      context: ./pbcs/pbc-subject-management
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "3005:3005"
+    environment:
+      NODE_ENV: development
+      PORT: 3005
+      DATABASE_URL: postgresql://postgres:postgres@pbc-subject-db:5432/subject_management
+      JWT_SECRET: dev-secret
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CLIENT_ID: pbc-subject-management
+      KAFKA_CONSUMER_GROUP: cg.subject-mgmt
+      KAFKA_GROUP_ID: cg.subject-mgmt
+      CORS_ORIGIN: http://localhost:3015,http://localhost:3000
+      LOG_LEVEL: info
+    depends_on:
+      - pbc-subject-db
+      - kafka
+
+  pbc-subject-management-ui:
+    build:
+      context: ./pbcs/pbc-subject-management
+      dockerfile: docker/Dockerfile.ui
+    ports:
+      - "3015:3015"
+    depends_on:
+      - pbc-subject-management-api
+
+  pbc-notification-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: notification
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5437:5432"
+    volumes:
+      - pbc_notification_db:/var/lib/postgresql/data
+      - ./pbcs/pbc-notification/db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notification"]
+      interval: 10s
+      retries: 5
+
+  pbc-notification-api:
+    build:
+      context: ./pbcs/pbc-notification
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "3006:3006"
+    environment:
+      NODE_ENV: development
+      PORT: 3006
+      DATABASE_URL: postgresql://postgres:postgres@pbc-notification-db:5432/notification
+      JWT_SECRET: dev-secret
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CLIENT_ID: pbc-notification
+      KAFKA_CONSUMER_GROUP: cg.notification
+      KAFKA_GROUP_ID: cg.notification
+      CORS_ORIGIN: http://localhost:3016,http://localhost:3000
+      LOG_LEVEL: info
+    depends_on:
+      - pbc-notification-db
+      - kafka
+
+  pbc-notification-ui:
+    build:
+      context: ./pbcs/pbc-notification
+      dockerfile: docker/Dockerfile.ui
+    ports:
+      - "3016:3016"
+    depends_on:
+      - pbc-notification-api
+
+  app-shell:
+    build:
+      context: ./app-shell
+      dockerfile: docker/Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - pbc-auth-ui
+      - pbc-student-management-ui
+      - pbc-class-management-ui
+      - pbc-course-management-ui
+      - pbc-subject-management-ui
+      - pbc-notification-ui
+
+volumes:
+  pbc_auth_db:
+  pbc_student_db:
+  pbc_class_db:
+  pbc_course_db:
+  pbc_subject_db:
+  pbc_notification_db:

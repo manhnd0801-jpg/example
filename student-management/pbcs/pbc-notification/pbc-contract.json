@@ -1,0 +1,122 @@
+{
+  "pbcId": "notification",
+  "version": "1.0.0",
+  "name": "Notification & Audit",
+  "description": "PBC thông báo và audit log hoạt động như pure consumer, lắng nghe tất cả sự kiện từ các PBC khác để tạo thông báo cho người dùng và ghi log audit cho admin.",
+  "category": "System",
+  "domain": "notification-audit",
+  "type": "full",
+
+  "sla": {
+    "availability": 99.9,
+    "responseTimeMs": 150,
+    "throughput": 2000
+  },
+
+  "technologies": {
+    "ui": "react",
+    "api": "nodejs",
+    "db": "postgresql",
+    "uiLibrary": "ant-design",
+    "messaging": "kafka"
+  },
+
+  "messaging": {
+    "broker": "kafka",
+    "jetstream": false,
+    "topicPrefix": "pbc.notification",
+    "notes": "Dùng Kafka thay NATS vì toàn bộ student-management-portal đã chọn Kafka làm event bus chuẩn. Consumer group: cg.notification. PBC này chỉ consume events, không publish."
+  },
+
+  "slots": ["notification-bell", "notification-list", "audit-log"],
+
+  "hooks": {
+    "before": ["validatePayload", "enforceTenant"],
+    "after": ["auditLog", "markAsProcessed"]
+  },
+
+  "capabilities": {
+    "ui": {
+      "widgets": ["notification-badge", "audit-search"],
+      "slots": ["notification-bell", "notification-list", "audit-log"],
+      "designTokens": ["--pbc-primary-color", "--pbc-notification-accent", "--pbc-border-radius", "--pbc-font-family"],
+      "uiLibrary": "ant-design"
+    },
+    "api": {
+      "supportsMetadata": true,
+      "endpoints": [
+        "/v1/notifications",
+        "/v1/notifications/:id/read",
+        "/v1/notifications/read-all",
+        "/v1/audit-logs"
+      ]
+    },
+    "uiInteraction": {
+      "outputs": [],
+      "inputs": [
+        "pbc.student-management.student.created",
+        "pbc.student-management.student.status-changed",
+        "pbc.class-management.class.created",
+        "pbc.class-management.student.assigned-to-class",
+        "pbc.course-management.course.created",
+        "pbc.subject-management.subject.assigned-to-class"
+      ]
+    },
+    "businessEvents": {
+      "produces": [],
+      "consumes": [
+        "pbc.student-management.student.created",
+        "pbc.student-management.student.updated",
+        "pbc.student-management.student.deleted",
+        "pbc.student-management.student.status-changed",
+        "pbc.class-management.class.created",
+        "pbc.class-management.class.updated",
+        "pbc.class-management.student.assigned-to-class",
+        "pbc.class-management.student.removed-from-class",
+        "pbc.course-management.course.created",
+        "pbc.course-management.course.updated",
+        "pbc.course-management.course.deleted",
+        "pbc.subject-management.subject.created",
+        "pbc.subject-management.subject.updated",
+        "pbc.subject-management.subject.assigned-to-class",
+        "pbc.subject-management.subject.assigned-to-course"
+      ]
+    }
+  },
+
+  "permissions": [
+    "notification:read",
+    "notification:mark-read",
+    "audit-log:read"
+  ],
+
+  "properties": {
+    "tenantResolution": "jwt-claim",
+    "dockerLayout": "docker/Dockerfile.ui and docker/Dockerfile.api",
+    "dataClassification": "internal — notification data không nhạy cảm; audit logs chứa thông tin hệ thống quan trọng",
+    "requiredEnvVars": [
+      "DATABASE_URL",
+      "JWT_SECRET",
+      "KAFKA_BROKERS",
+      "KAFKA_GROUP_ID",
+      "PORT",
+      "CORS_ORIGIN"
+    ],
+    "apiAuthNotes": "GET /health là public. GET /v1/notifications yêu cầu JWT. GET /v1/audit-logs yêu cầu JWT và role ADMIN."
+  },
+
+  "config": {
+    "webhookUrl": "",
+    "aiPromptRegistry": ""
+  },
+
+  "i18n": {
+    "defaultLocale": "vi",
+    "supportedLocales": ["vi", "en"]
+  },
+
+  "extensions": {
+    "supportAIHooks": true,
+    "allowCustomSlots": false
+  }
+}

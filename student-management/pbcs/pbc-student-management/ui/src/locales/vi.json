@@ -1,0 +1,22 @@
+{
+  "student": {
+    "title": "Quản lý Sinh viên",
+    "list": "Danh sách sinh viên",
+    "create": "Thêm sinh viên",
+    "edit": "Sửa sinh viên",
+    "detail": "Chi tiết sinh viên",
+    "studentCode": "Mã sinh viên",
+    "fullName": "Họ và tên",
+    "email": "Email",
+    "phone": "Điện thoại",
+    "status": "Trạng thái",
+    "gender": "Giới tính",
+    "dateOfBirth": "Ngày sinh",
+    "address": "Địa chỉ",
+    "enrollmentDate": "Ngày nhập học",
+    "status_ACTIVE": "Đang học",
+    "status_SUSPENDED": "Tạm dừng",
+    "status_GRADUATED": "Tốt nghiệp",
+    "status_DROPPED_OUT": "Thôi học"
+  }
+}

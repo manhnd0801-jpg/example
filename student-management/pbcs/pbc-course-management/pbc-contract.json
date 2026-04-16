@@ -1,0 +1,106 @@
+{
+  "pbcId": "course-management",
+  "version": "1.0.0",
+  "name": "Course Management",
+  "description": "Quản lý chương trình đào tạo (khóa học) bao gồm quản lý curriculum, kế hoạch học kỳ và gán môn học vào chương trình. Định nghĩa cấu trúc học tập cho các lớp.",
+  "category": "Academic",
+  "domain": "curriculum-management",
+  "type": "full",
+
+  "sla": {
+    "availability": 99.9,
+    "responseTimeMs": 200,
+    "throughput": 600
+  },
+
+  "technologies": {
+    "ui": "react",
+    "api": "nodejs",
+    "db": "postgresql",
+    "uiLibrary": "ant-design",
+    "messaging": "kafka"
+  },
+
+  "messaging": {
+    "broker": "kafka",
+    "jetstream": false,
+    "topicPrefix": "pbc.course-management",
+    "notes": "Dùng Kafka thay NATS vì toàn bộ student-management-portal đã chọn Kafka làm event bus chuẩn. Consumer group: cg.course-mgmt"
+  },
+
+  "slots": ["course-list", "course-form", "course-detail"],
+
+  "hooks": {
+    "before": ["validatePayload", "enforceTenant", "validateCourseStructure"],
+    "after": ["auditLog", "emitDomainEvent", "updateCourseIndex"]
+  },
+
+  "capabilities": {
+    "ui": {
+      "widgets": ["course-curriculum-tree", "semester-planner"],
+      "slots": ["course-list", "course-form", "course-detail"],
+      "designTokens": ["--pbc-primary-color", "--pbc-course-accent", "--pbc-border-radius", "--pbc-font-family"],
+      "uiLibrary": "ant-design"
+    },
+    "api": {
+      "supportsMetadata": true,
+      "endpoints": [
+        "/v1/courses",
+        "/v1/courses/:id",
+        "/v1/courses/:id/subjects",
+        "/v1/courses/:id/subjects/:subjectId"
+      ]
+    },
+    "uiInteraction": {
+      "outputs": ["pbc.course-management.course.selected"],
+      "inputs": ["pbc.subject-management.subject.assigned-to-course"]
+    },
+    "businessEvents": {
+      "produces": [
+        "pbc.course-management.course.created",
+        "pbc.course-management.course.updated",
+        "pbc.course-management.course.deleted"
+      ],
+      "consumes": [
+        "pbc.subject-management.subject.assigned-to-course"
+      ]
+    }
+  },
+
+  "permissions": [
+    "course:read",
+    "course:write",
+    "course:delete",
+    "course:assign-subject"
+  ],
+
+  "properties": {
+    "tenantResolution": "jwt-claim",
+    "dockerLayout": "docker/Dockerfile.ui and docker/Dockerfile.api",
+    "dataClassification": "internal — course data không nhạy cảm; attributes JSON có thể chứa thông tin curriculum",
+    "requiredEnvVars": [
+      "DATABASE_URL",
+      "JWT_SECRET",
+      "KAFKA_BROKERS",
+      "KAFKA_GROUP_ID",
+      "PORT",
+      "CORS_ORIGIN"
+    ],
+    "apiAuthNotes": "GET /health là public. Tất cả endpoint khác yêu cầu JWT. CRUD operations yêu cầu role ADMIN hoặc ACADEMIC_STAFF."
+  },
+
+  "config": {
+    "webhookUrl": "",
+    "aiPromptRegistry": ""
+  },
+
+  "i18n": {
+    "defaultLocale": "vi",
+    "supportedLocales": ["vi", "en"]
+  },
+
+  "extensions": {
+    "supportAIHooks": true,
+    "allowCustomSlots": false
+  }
+}

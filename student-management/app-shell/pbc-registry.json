@@ -1,0 +1,65 @@
+{
+  "version": "1.0",
+  "pbcList": [
+    {
+      "pbcId": "pbc-auth",
+      "version": "1.0.0",
+      "remoteUrl": "http://localhost:3000/remotes/pbc-auth/assets/remoteEntry.js",
+      "scope": "pbc_auth",
+      "module": "./bootstrap",
+      "routePrefix": "/auth",
+      "label": "Đăng nhập & Phân quyền",
+      "enabled": true
+    },
+    {
+      "pbcId": "pbc-student-management",
+      "version": "1.0.0",
+      "remoteUrl": "http://localhost:3000/remotes/pbc-student-management/assets/remoteEntry.js",
+      "scope": "pbc_student_management",
+      "module": "./bootstrap",
+      "routePrefix": "/students",
+      "label": "Quản lý Sinh viên",
+      "enabled": true
+    },
+    {
+      "pbcId": "pbc-class-management",
+      "version": "1.0.0",
+      "remoteUrl": "http://localhost:3000/remotes/pbc-class-management/assets/remoteEntry.js",
+      "scope": "pbc_class_management",
+      "module": "./bootstrap",
+      "routePrefix": "/classes",
+      "label": "Quản lý Lớp học",
+      "enabled": true
+    },
+    {
+      "pbcId": "pbc-course-management",
+      "version": "1.0.0",
+      "remoteUrl": "http://localhost:3000/remotes/pbc-course-management/assets/remoteEntry.js",
+      "scope": "pbc_course_management",
+      "module": "./bootstrap",
+      "routePrefix": "/courses",
+      "label": "Quản lý Khóa học",
+      "enabled": true
+    },
+    {
+      "pbcId": "pbc-subject-management",
+      "version": "1.0.0",
+      "remoteUrl": "http://localhost:3000/remotes/pbc-subject-management/assets/remoteEntry.js",
+      "scope": "pbc_subject_management",
+      "module": "./bootstrap",
+      "routePrefix": "/subjects",
+      "label": "Quản lý Môn học",
+      "enabled": true
+    },
+    {
+      "pbcId": "pbc-notification",
+      "version": "1.0.0",
+      "remoteUrl": "http://localhost:3000/remotes/pbc-notification/assets/remoteEntry.js",
+      "scope": "pbc_notification",
+      "module": "./bootstrap",
+      "routePrefix": "/notifications",
+      "label": "Thông báo",
+      "enabled": true
+    }
+  ]
+}

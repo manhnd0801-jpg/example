@@ -1,5 +1,5 @@
 // AI-GENERATED
-// Dynamic load PBC từ pbc-registry.json — lazy load theo route
+// Vite Module Federation — static remotes, dynamic mount
 import registry from "../../pbc-registry.json";
 
 export interface PBCEntry {
@@ -8,8 +8,8 @@ export interface PBCEntry {
   remoteUrl: string;
   scope: string;
   module: string;
-  customElementTag: string;
   routePrefix: string;
+  label?: string;
   enabled: boolean;
 }
 
@@ -17,25 +17,41 @@ export function getEnabledPBCs(): PBCEntry[] {
   return registry.pbcList.filter((pbc) => pbc.enabled) as PBCEntry[];
 }
 
-export async function loadPBC(entry: PBCEntry): Promise<void> {
-  const existingScript = document.querySelector(
-    `script[data-pbc="${entry.pbcId}"]`
-  );
-  if (existingScript) return;
-
-  await new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = entry.remoteUrl;
-    script.dataset.pbc = entry.pbcId;
-    script.onload = () => resolve();
-    script.onerror = () =>
-      reject(new Error(`[pbc-loader] Failed to load ${entry.pbcId} from ${entry.remoteUrl}`));
-    document.head.appendChild(script);
-  });
-}
+// Map scope → dynamic import factory
+// Vite MF yêu cầu import path phải là string literal tại build time
+const remoteImporters: Record<string, () => Promise<any>> = {
+  pbc_auth:               () => import("pbc_auth/bootstrap"),
+  pbc_student_management: () => import("pbc_student_management/bootstrap"),
+  pbc_class_management:   () => import("pbc_class_management/bootstrap"),
+  pbc_course_management:  () => import("pbc_course_management/bootstrap"),
+  pbc_subject_management: () => import("pbc_subject_management/bootstrap"),
+  pbc_notification:       () => import("pbc_notification/bootstrap"),
+};
 
 export async function mountPBC(entry: PBCEntry, container: HTMLElement): Promise<void> {
-  await loadPBC(entry);
-  const el = document.createElement(entry.customElementTag);
-  container.appendChild(el);
+  const importer = remoteImporters[entry.scope];
+  if (!importer) {
+    container.innerHTML = `<div style="padding:16px;color:#cf1322">Unknown PBC scope: ${entry.scope}</div>`;
+    return;
+  }
+
+  try {
+    const mod = await importer();
+    const Component = mod?.default;
+
+    if (!Component) {
+      throw new Error(`"${entry.pbcId}" không có default export`);
+    }
+
+    const React = (await import("react")).default;
+    const { createRoot } = await import("react-dom/client");
+    createRoot(container).render(React.createElement(Component));
+  } catch (err) {
+    console.error(`[pbc-loader] Error mounting ${entry.pbcId}:`, err);
+    container.innerHTML = `
+      <div style="padding:16px;color:#cf1322;background:#fff2f0;border:1px solid #ffccc7;border-radius:4px;margin:16px">
+        <strong>Không thể tải module: ${entry.pbcId}</strong><br/>
+        <small>${(err as Error).message}</small>
+      </div>`;
+  }
 }
