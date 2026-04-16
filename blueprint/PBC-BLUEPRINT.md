@@ -314,6 +314,7 @@ Khuyến nghị chuẩn hóa thêm để tương thích App Blueprint:
   ```
 - **Bcrypt hash trong seed phải được verify** trước khi commit. Sau khi tạo hash, chạy lệnh verify trong cùng runtime: `node -e "require('bcrypt').compare('<password>','<hash>').then(console.log)"` — kết quả phải là `true`. Hash sai sẽ khiến login luôn thất bại mà không có lỗi rõ ràng.
 - **Seed cho dev/local** (`db/seed/99_admin_seed.sql` hoặc tương đương): dùng plain SQL (không DO block với session variable) để PostgreSQL `docker-entrypoint-initdb.d` tự chạy được. Mount từng file migration và seed trực tiếp vào `/docker-entrypoint-initdb.d/` — PostgreSQL chỉ chạy file `.sql` ở root thư mục đó, không đệ quy vào subfolder.
+- **Multi-tenant onboarding**: mỗi tenant mới chạy `tenant-init.sql` với tenant ID riêng. Tenant ID trong production được inject qua subdomain hoặc JWT claim — không dùng `dev-tenant` hay giá trị cố định nào khác ngoài môi trường dev.
 
 ### API bootstrap & chạy độc lập
 - **Phạm vi stack:** Yêu cầu trong các mục bootstrap, health, logging, JWT, `.env` là **trung lập ngôn ngữ** — áp dụng cho mọi `technologies.api`. Các ví dụ **`main.ts` / `app.module.ts`**, **Terminus**, **JwtAuthGuard**, **Winston / Pino** chỉ là **minh họa cho Node/NestJS**; stack khác (Spring Boot, Gin/Fiber, FastAPI, …) phải có **phần tử tương đương** đạt cùng mục tiêu.

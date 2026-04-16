@@ -55,6 +55,53 @@ RefreshToken  (id, userId, token, expiresAt, revokedAt)
 - `STUDENT` — Sinh viên
 - `ACADEMIC_STAFF` — Ban đào tạo
 
+### Phân quyền theo Role (RBAC)
+
+| Chức năng | ADMIN | ACADEMIC_STAFF | TEACHER | STUDENT |
+|-----------|-------|----------------|---------|---------|
+| Quản lý user (`/v1/users`) | ✅ | ✅ | ❌ | ❌ |
+| Quản lý role (`/v1/roles`) | ✅ | ❌ | ❌ | ❌ |
+| Quản lý permission (`/v1/permissions`) | ✅ | ❌ | ❌ | ❌ |
+| Đăng nhập / Đổi mật khẩu | ✅ | ✅ | ✅ | ✅ |
+
+### Bootstrapping — Tài khoản Admin đầu tiên
+
+Hệ thống **không có form đăng ký public**. Đây là hệ thống nội bộ — tài khoản được cấp bởi người quản trị.
+
+**Tài khoản Admin đầu tiên được tạo tự động khi deploy:**
+- Chạy `db/seed/99_admin_seed.sql` (tự động qua Docker `docker-entrypoint-initdb.d`)
+- Username: `admin` | Password: `Admin@123456` (phải đổi ngay sau lần đăng nhập đầu)
+- Tenant: được cấu hình theo môi trường (`dev-tenant` cho dev, tenant thật cho production)
+
+**Sau đó Admin tạo tài khoản cho người dùng khác qua UI hoặc API:**
+```
+Admin đăng nhập → Quản lý người dùng → Tạo tài khoản → Gửi credentials cho người dùng
+```
+
+### Multi-tenancy
+
+Hệ thống hỗ trợ **nhiều trường** (multi-tenant) trên cùng một deployment:
+
+```
+tenant-bachkhoa  = Đại học Bách Khoa HN
+tenant-fpt       = Đại học FPT
+tenant-neu       = Đại học Kinh tế QD
+dev-tenant       = Môi trường dev/test
+```
+
+**Tenant ID được xác định qua:**
+- **JWT claim** (sau khi đăng nhập): `{ tenantId: "bachkhoa", role: "ADMIN", ... }`
+- **Header `X-Tenant-Id`**: App Shell inject vào mọi request
+- **Subdomain** (production): `bachkhoa.student-portal.vn` → tenant = `bachkhoa`
+
+**Dữ liệu hoàn toàn tách biệt** — sinh viên, giảng viên, lớp học của trường A không thấy được dữ liệu trường B.
+
+**Onboard tenant mới:**
+```bash
+psql -v tenant_id='bachkhoa' -f db/tenant-init.sql
+# → Tạo roles, permissions, admin user cho tenant bachkhoa
+```
+
 ### API chính
 ```
 POST /v1/auth/login

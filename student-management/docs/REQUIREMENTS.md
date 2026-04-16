@@ -11,6 +11,13 @@ Trạng thái: Draft
 
 **Mục tiêu:** Xây dựng hệ thống quản lý sinh viên hoàn chỉnh theo kiến trúc Composable Platform, gồm 6 PBC độc lập giao tiếp qua Event Bus.
 
+### Mô hình vận hành
+
+Hệ thống được thiết kế cho **nhiều trường** (multi-tenant):
+- Mỗi trường là một **tenant** độc lập với dữ liệu hoàn toàn tách biệt
+- Tài khoản **không tự đăng ký** — được cấp bởi Admin của từng trường
+- Admin đầu tiên được tạo tự động khi deploy (seed script), sau đó Admin tạo tài khoản cho người dùng khác
+
 ### Các PBC chính
 
 | STT | PBC ID | Tên |
@@ -35,6 +42,13 @@ Trạng thái: Draft
 - Quên mật khẩu, đổi mật khẩu
 - JWT Token + Refresh Token
 - Session management
+
+**Không có form đăng ký public** — tài khoản được Admin cấp. Admin đầu tiên được tạo qua seed script khi deploy.
+
+**Phân quyền:**
+- `ADMIN`, `ACADEMIC_STAFF`: quản lý user
+- `ADMIN`: quản lý role, permission
+- Tất cả roles: đăng nhập, đổi mật khẩu
 
 **Dữ liệu chính:**
 ```

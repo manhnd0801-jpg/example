@@ -37,6 +37,40 @@ Topic prefix convention: `pbc.<pbcId>.<aggregate>.<verb>`
 
 ---
 
+## Flow 0: Khởi tạo Hệ thống (Bootstrap)
+
+```
+DevOps/IT deploy hệ thống
+    │
+    ├─ Docker khởi động PostgreSQL
+    │       │
+    │       └─ Tự động chạy db/seed/99_admin_seed.sql
+    │               │
+    │               └─ Tạo: roles, permissions, admin user
+    │                  tenant: <cấu hình theo môi trường>
+    │                  username: admin / password: Admin@123456
+    │
+    ├─ Admin đăng nhập lần đầu
+    │       │
+    │       └─ Đổi mật khẩu ngay (bắt buộc)
+    │
+    └─ Admin tạo tài khoản cho người dùng khác
+            │
+            └─ POST /v1/users (role: TEACHER / STUDENT / ACADEMIC_STAFF)
+                    │
+                    └─ publish ──► pbc.auth.user.created
+                                        │
+                                        └──► pbc-notification (thông báo)
+```
+
+**Lưu ý multi-tenant:**
+- Mỗi trường là một tenant riêng (`tenant-bachkhoa`, `tenant-fpt`...)
+- Onboard tenant mới: `psql -v tenant_id='<id>' -f db/tenant-init.sql`
+- Tenant ID được inject qua JWT claim hoặc header `X-Tenant-Id`
+- Dữ liệu hoàn toàn tách biệt giữa các tenant
+
+---
+
 ## Flow 1: Đăng nhập & Khởi tạo Session
 
 ```
