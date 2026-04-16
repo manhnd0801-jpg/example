@@ -4,17 +4,19 @@ import { Form, Input, InputNumber, Select, Button, message } from 'antd';
 import axios from 'axios';
 
 const BASE = import.meta.env.VITE_CLASS_MGMT_URL || 'http://localhost:3003';
+const token = () => localStorage.getItem('accessToken');
+const tenantId = () => localStorage.getItem('tenantId') || 'dev-tenant';
 
 export default function ClassFormSlot({ onSuccess }: { onSuccess?: () => void }) {
   const [form] = Form.useForm();
 
   const handleSubmit = async (values: any) => {
     try {
-      await axios.post(`${BASE}/v1/classes`, { data: values, metadata: { tenantId: 'tenant-default' } }, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } });
+      await axios.post(`${BASE}/v1/classes`, { data: values, metadata: { tenantId: tenantId() } }, { headers: { Authorization: `Bearer ${token()}` } });
       message.success('Tạo lớp học thành công');
       form.resetFields();
       onSuccess?.();
-    } catch { message.error('Có lỗi xảy ra'); }
+    } catch (err: any) { message.error(err?.response?.data?.message || 'Có lỗi xảy ra'); }
   };
 
   return (

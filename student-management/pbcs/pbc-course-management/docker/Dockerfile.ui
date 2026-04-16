@@ -1,9 +1,10 @@
-# AI-GENERATED
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY ui/package*.json ./
 RUN npm install
 COPY ui/ .
+ARG VITE_COURSE_MGMT_URL=http://localhost:3004
+ENV VITE_COURSE_MGMT_URL=$VITE_COURSE_MGMT_URL
 RUN npm run build
 
 FROM nginx:alpine AS runner

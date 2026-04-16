@@ -4,6 +4,8 @@ import { Form, Input, InputNumber, Select, Button, Tabs, message } from 'antd';
 import axios from 'axios';
 
 const BASE = import.meta.env.VITE_SUBJECT_MGMT_URL || 'http://localhost:3005';
+const token = () => localStorage.getItem('accessToken');
+const tenantId = () => localStorage.getItem('tenantId') || 'dev-tenant';
 
 export default function SubjectAssignSlot({ subjectId, onSuccess }: { subjectId: string; onSuccess?: () => void }) {
   const [classForm] = Form.useForm();
@@ -11,20 +13,24 @@ export default function SubjectAssignSlot({ subjectId, onSuccess }: { subjectId:
 
   const assignToClass = async (values: any) => {
     try {
-      await axios.post(`${BASE}/v1/subjects/${subjectId}/assign-to-class`, { data: values, metadata: { tenantId: 'tenant-default' } }, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } });
+      await axios.post(`${BASE}/v1/subjects/${subjectId}/assign-to-class`,
+        { data: values, metadata: { tenantId: tenantId() } },
+        { headers: { Authorization: `Bearer ${token()}` } });
       message.success('Gán môn học vào lớp thành công');
       classForm.resetFields();
       onSuccess?.();
-    } catch (err: any) { message.error(err?.response?.data?.metadata?.error?.message || 'Có lỗi xảy ra'); }
+    } catch (err: any) { message.error(err?.response?.data?.message || 'Có lỗi xảy ra'); }
   };
 
   const assignToCourse = async (values: any) => {
     try {
-      await axios.post(`${BASE}/v1/subjects/${subjectId}/assign-to-course`, { data: values, metadata: { tenantId: 'tenant-default' } }, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } });
+      await axios.post(`${BASE}/v1/subjects/${subjectId}/assign-to-course`,
+        { data: values, metadata: { tenantId: tenantId() } },
+        { headers: { Authorization: `Bearer ${token()}` } });
       message.success('Gán môn học vào chương trình thành công');
       courseForm.resetFields();
       onSuccess?.();
-    } catch (err: any) { message.error(err?.response?.data?.metadata?.error?.message || 'Có lỗi xảy ra'); }
+    } catch (err: any) { message.error(err?.response?.data?.message || 'Có lỗi xảy ra'); }
   };
 
   return (

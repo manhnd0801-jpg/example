@@ -12,13 +12,12 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
     return {
       type: 'postgres',
       url: this.configService.get<string>('DATABASE_URL'),
-      schema: this.configService.get<string>('DB_SCHEMA', 'tenant_default'),
       entities: [StudentEntity],
       migrations: ['dist/db/migrations/*.js'],
-      migrationsRun: true,
-      synchronize: false,
+      migrationsRun: false,
+      synchronize: true,
       logging: this.configService.get<string>('NODE_ENV') === 'development',
-      ssl: this.configService.get<string>('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
+      ssl: false,
     };
   }
 }

@@ -9,7 +9,7 @@ export default function CourseDetailSlot({ courseId }: { courseId: string }) {
   const [course, setCourse] = useState<any>(null);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` };
+  const headers = { Authorization: `Bearer ${localStorage.getItem('accessToken')}` };
 
   useEffect(() => {
     Promise.all([

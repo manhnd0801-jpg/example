@@ -10,6 +10,8 @@ RUN npm install
 
 # Copy source và build
 COPY ui/ .
+ARG VITE_AUTH_API_URL=http://localhost:3001
+ENV VITE_AUTH_API_URL=$VITE_AUTH_API_URL
 RUN npm run build
 
 # ---- Runner stage ----

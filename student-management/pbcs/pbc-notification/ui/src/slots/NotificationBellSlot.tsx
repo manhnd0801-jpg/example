@@ -12,7 +12,7 @@ export default function NotificationBellSlot() {
   const [open, setOpen] = useState(false);
 
   const fetchNotifications = () => {
-    axios.get(`${BASE}/v1/notifications`, { params: { pageSize: 5, isRead: false }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    axios.get(`${BASE}/v1/notifications`, { params: { pageSize: 5, isRead: false }, headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } })
       .then(r => {
         setNotifications(r.data.data.notifications || []);
         setUnreadCount(r.data.data.unreadCount || 0);
@@ -27,7 +27,7 @@ export default function NotificationBellSlot() {
   }, []);
 
   const markAllRead = async () => {
-    await axios.patch(`${BASE}/v1/notifications/read-all`, {}, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } });
+    await axios.patch(`${BASE}/v1/notifications/read-all`, {}, { headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } });
     fetchNotifications();
   };
 
@@ -40,15 +40,14 @@ export default function NotificationBellSlot() {
       {notifications.length === 0 ? (
         <Empty description="Không có thông báo mới" image={Empty.PRESENTED_IMAGE_SIMPLE} />
       ) : (
-        <List
-          size="small"
-          dataSource={notifications}
-          renderItem={(item: any) => (
-            <List.Item style={{ background: item.isRead ? 'transparent' : '#f0f7ff', borderRadius: 4, padding: '8px 12px', marginBottom: 4 }}>
-              <List.Item.Meta title={<Typography.Text strong={!item.isRead}>{item.title}</Typography.Text>} description={<Typography.Text type="secondary" style={{ fontSize: 12 }}>{item.content}</Typography.Text>} />
-            </List.Item>
-          )}
-        />
+        <List size="small" dataSource={notifications} renderItem={(item: any) => (
+          <List.Item style={{ background: item.isRead ? 'transparent' : '#f0f7ff', borderRadius: 4, padding: '8px 12px', marginBottom: 4 }}>
+            <List.Item.Meta
+              title={<Typography.Text strong={!item.isRead}>{item.title}</Typography.Text>}
+              description={<Typography.Text type="secondary" style={{ fontSize: 12 }}>{item.content}</Typography.Text>}
+            />
+          </List.Item>
+        )} />
       )}
     </div>
   );

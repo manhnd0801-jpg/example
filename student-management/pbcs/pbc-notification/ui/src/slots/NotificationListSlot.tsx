@@ -12,7 +12,7 @@ export default function NotificationListSlot() {
   const [isRead, setIsRead] = useState<string | undefined>();
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` };
+  const headers = { Authorization: `Bearer ${localStorage.getItem('accessToken')}` };
 
   const fetch = () => {
     setLoading(true);

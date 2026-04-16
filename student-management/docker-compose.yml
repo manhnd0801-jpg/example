@@ -64,6 +64,8 @@ services:
     build:
       context: ./pbcs/pbc-auth
       dockerfile: docker/Dockerfile.ui
+      args:
+        VITE_AUTH_API_URL: http://localhost:3000/api/auth
     ports:
       - "3011:3011"
     depends_on:
@@ -110,6 +112,8 @@ services:
     build:
       context: ./pbcs/pbc-student-management
       dockerfile: docker/Dockerfile.ui
+      args:
+        VITE_STUDENT_MGMT_URL: http://localhost:3000/api/student
     ports:
       - "3012:3012"
     depends_on:
@@ -156,6 +160,8 @@ services:
     build:
       context: ./pbcs/pbc-class-management
       dockerfile: docker/Dockerfile.ui
+      args:
+        VITE_CLASS_MGMT_URL: http://localhost:3000/api/class
     ports:
       - "3013:3013"
     depends_on:
@@ -202,6 +208,8 @@ services:
     build:
       context: ./pbcs/pbc-course-management
       dockerfile: docker/Dockerfile.ui
+      args:
+        VITE_COURSE_MGMT_URL: http://localhost:3000/api/course
     ports:
       - "3014:3014"
     depends_on:
@@ -248,6 +256,8 @@ services:
     build:
       context: ./pbcs/pbc-subject-management
       dockerfile: docker/Dockerfile.ui
+      args:
+        VITE_SUBJECT_MGMT_URL: http://localhost:3000/api/subject
     ports:
       - "3015:3015"
     depends_on:
@@ -294,6 +304,8 @@ services:
     build:
       context: ./pbcs/pbc-notification
       dockerfile: docker/Dockerfile.ui
+      args:
+        VITE_NOTIFICATION_URL: http://localhost:3000/api/notification
     ports:
       - "3016:3016"
     depends_on:
@@ -307,11 +319,17 @@ services:
       - "3000:3000"
     depends_on:
       - pbc-auth-ui
+      - pbc-auth-api
       - pbc-student-management-ui
+      - pbc-student-management-api
       - pbc-class-management-ui
+      - pbc-class-management-api
       - pbc-course-management-ui
+      - pbc-course-management-api
       - pbc-subject-management-ui
+      - pbc-subject-management-api
       - pbc-notification-ui
+      - pbc-notification-api
 
 volumes:
   pbc_auth_db:

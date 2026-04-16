@@ -14,7 +14,7 @@ import { AuditLogEntity } from './core/domain/audit-log.entity';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       entities: [NotificationEntity, AuditLogEntity],
-      synchronize: false,
+      synchronize: true,
     }),
     NotificationModule,
   ],

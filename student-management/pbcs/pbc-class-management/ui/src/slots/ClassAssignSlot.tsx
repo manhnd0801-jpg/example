@@ -8,13 +8,15 @@ const BASE = import.meta.env.VITE_CLASS_MGMT_URL || 'http://localhost:3003';
 export default function ClassAssignSlot({ classId, onSuccess }: { classId: string; onSuccess?: () => void }) {
   const [studentId, setStudentId] = useState('');
   const [loading, setLoading] = useState(false);
-  const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` };
+  const headers = { Authorization: `Bearer ${localStorage.getItem('accessToken')}` };
 
   const handleAssign = async () => {
     if (!studentId.trim()) return;
     setLoading(true);
     try {
-      await axios.post(`${BASE}/v1/classes/${classId}/students`, { data: { studentId }, metadata: { tenantId: 'tenant-default' } }, { headers });
+      await axios.post(`${BASE}/v1/classes/${classId}/students`,
+        { data: { studentId }, metadata: { tenantId: localStorage.getItem('tenantId') || 'dev-tenant' } },
+        { headers });
       message.success('Gán sinh viên thành công');
       setStudentId('');
       onSuccess?.();

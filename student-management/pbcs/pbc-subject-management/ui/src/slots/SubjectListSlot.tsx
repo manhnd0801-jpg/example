@@ -1,8 +1,9 @@
 // AI-GENERATED
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Tag, Space, Select, message } from 'antd';
+import { Table, Button, Tag, Space, Select, Modal, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import SubjectFormSlot from './SubjectFormSlot';
 
 const BASE = import.meta.env.VITE_SUBJECT_MGMT_URL || 'http://localhost:3005';
 const TYPE_COLORS: Record<string, string> = { REQUIRED: 'red', ELECTIVE: 'blue', FREE_ELECTIVE: 'green' };
@@ -11,16 +12,17 @@ export default function SubjectListSlot() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [subjectType, setSubjectType] = useState<string | undefined>();
+  const [showForm, setShowForm] = useState(false);
 
-  const fetch = () => {
+  const fetchSubjects = () => {
     setLoading(true);
-    axios.get(`${BASE}/v1/subjects`, { params: { subjectType }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    axios.get(`${BASE}/v1/subjects`, { params: { subjectType }, headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } })
       .then(r => setSubjects(r.data.data.subjects || []))
       .catch(() => message.error('Không thể tải danh sách môn học'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetch(); }, [subjectType]);
+  useEffect(() => { fetchSubjects(); }, [subjectType]);
 
   const columns = [
     { title: 'Mã MH', dataIndex: 'subjectCode', key: 'subjectCode' },
@@ -37,9 +39,12 @@ export default function SubjectListSlot() {
       <Space style={{ marginBottom: 16 }}>
         <Select placeholder="Lọc loại môn học" allowClear style={{ width: 180 }} onChange={setSubjectType}
           options={[{ value: 'REQUIRED', label: 'Bắt buộc' }, { value: 'ELECTIVE', label: 'Tự chọn' }, { value: 'FREE_ELECTIVE', label: 'Tự chọn tự do' }]} />
-        <Button type="primary" icon={<PlusOutlined />}>Thêm môn học</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)}>Thêm môn học</Button>
       </Space>
       <Table rowKey="id" columns={columns} dataSource={subjects} loading={loading} />
+      <Modal title="Thêm môn học" open={showForm} onCancel={() => setShowForm(false)} footer={null} destroyOnClose>
+        <SubjectFormSlot onSuccess={() => { setShowForm(false); fetchSubjects(); }} />
+      </Modal>
     </div>
   );
 }

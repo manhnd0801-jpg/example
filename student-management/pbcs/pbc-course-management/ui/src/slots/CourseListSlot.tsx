@@ -1,8 +1,9 @@
 // AI-GENERATED
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Tag, Space, Select, message } from 'antd';
+import { Table, Button, Tag, Space, Select, Modal, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import CourseFormSlot from './CourseFormSlot';
 
 const BASE = import.meta.env.VITE_COURSE_MGMT_URL || 'http://localhost:3004';
 
@@ -10,16 +11,17 @@ export default function CourseListSlot() {
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | undefined>();
+  const [showForm, setShowForm] = useState(false);
 
-  const fetch = () => {
+  const fetchCourses = () => {
     setLoading(true);
-    axios.get(`${BASE}/v1/courses`, { params: { status }, headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    axios.get(`${BASE}/v1/courses`, { params: { status }, headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } })
       .then(r => setCourses(r.data.data.courses || []))
       .catch(() => message.error('Không thể tải danh sách chương trình'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetch(); }, [status]);
+  useEffect(() => { fetchCourses(); }, [status]);
 
   const columns = [
     { title: 'Mã CT', dataIndex: 'courseCode', key: 'courseCode' },
@@ -35,9 +37,12 @@ export default function CourseListSlot() {
       <Space style={{ marginBottom: 16 }}>
         <Select placeholder="Lọc trạng thái" allowClear style={{ width: 160 }} onChange={setStatus}
           options={[{ value: 'ACTIVE', label: 'Đang hoạt động' }, { value: 'UPCOMING', label: 'Sắp mở' }, { value: 'CLOSED', label: 'Đã đóng' }]} />
-        <Button type="primary" icon={<PlusOutlined />}>Thêm chương trình</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)}>Thêm chương trình</Button>
       </Space>
       <Table rowKey="id" columns={columns} dataSource={courses} loading={loading} />
+      <Modal title="Thêm chương trình" open={showForm} onCancel={() => setShowForm(false)} footer={null} destroyOnClose>
+        <CourseFormSlot onSuccess={() => { setShowForm(false); fetchCourses(); }} />
+      </Modal>
     </div>
   );
 }

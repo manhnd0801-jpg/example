@@ -9,7 +9,7 @@ export default function ClassDetailSlot({ classId }: { classId: string }) {
   const [cls, setCls] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const headers = { Authorization: `Bearer ${localStorage.getItem('access_token')}` };
+  const headers = { Authorization: `Bearer ${localStorage.getItem('accessToken')}` };
 
   useEffect(() => {
     Promise.all([
@@ -32,7 +32,8 @@ export default function ClassDetailSlot({ classId }: { classId: string }) {
         <Descriptions.Item label="Năm học">{cls.academicYear}</Descriptions.Item>
         <Descriptions.Item label="Trạng thái"><Tag color="green">{cls.status}</Tag></Descriptions.Item>
         <Descriptions.Item label="Sĩ số">
-          {cls.currentStudents}/{cls.maxStudents} <Progress percent={Math.round((cls.currentStudents / cls.maxStudents) * 100)} size="small" style={{ width: 100, display: 'inline-block', marginLeft: 8 }} />
+          {cls.currentStudents}/{cls.maxStudents}
+          <Progress percent={Math.round((cls.currentStudents / cls.maxStudents) * 100)} size="small" style={{ width: 100, display: 'inline-block', marginLeft: 8 }} />
         </Descriptions.Item>
       </Descriptions>
       <Table rowKey="id" dataSource={students} columns={[

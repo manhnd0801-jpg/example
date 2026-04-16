@@ -11,7 +11,7 @@ export default function SubjectDetailSlot({ subjectId }: { subjectId: string }) 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get(`${BASE}/v1/subjects/${subjectId}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    axios.get(`${BASE}/v1/subjects/${subjectId}`, { headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } })
       .then(r => setSubject(r.data.data))
       .catch(() => message.error('Không thể tải thông tin môn học'))
       .finally(() => setLoading(false));

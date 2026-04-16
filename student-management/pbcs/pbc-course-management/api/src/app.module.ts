@@ -14,7 +14,7 @@ import { CourseSubjectEntity } from './core/domain/course-subject.entity';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       entities: [CourseEntity, CourseSubjectEntity],
-      synchronize: false,
+      synchronize: true,
     }),
     CourseModule,
   ],

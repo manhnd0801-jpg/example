@@ -1,9 +1,10 @@
-# AI-GENERATED
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY ui/package*.json ./
 RUN npm install
 COPY ui/ .
+ARG VITE_NOTIFICATION_URL=http://localhost:3006
+ENV VITE_NOTIFICATION_URL=$VITE_NOTIFICATION_URL
 RUN npm run build
 
 FROM nginx:alpine AS runner

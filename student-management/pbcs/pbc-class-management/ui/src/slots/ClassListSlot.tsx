@@ -1,22 +1,26 @@
 // AI-GENERATED
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Tag, Space, Progress, message } from 'antd';
+import { Table, Button, Tag, Space, Progress, Modal, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import ClassFormSlot from './ClassFormSlot';
 
 const BASE = import.meta.env.VITE_CLASS_MGMT_URL || 'http://localhost:3003';
 
 export default function ClassListSlot() {
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => {
+  const fetchClasses = () => {
     setLoading(true);
-    axios.get(`${BASE}/v1/classes`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` } })
+    axios.get(`${BASE}/v1/classes`, { headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } })
       .then(r => setClasses(r.data.data.classes || []))
       .catch(() => message.error('Không thể tải danh sách lớp'))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { fetchClasses(); }, []);
 
   const columns = [
     { title: 'Mã lớp', dataIndex: 'classCode', key: 'classCode' },
@@ -27,7 +31,7 @@ export default function ClassListSlot() {
       render: (_: any, r: any) => (
         <Space>
           <span>{r.currentStudents}/{r.maxStudents}</span>
-          <Progress percent={Math.round((r.currentStudents / r.maxStudents) * 100)} size="small" style={{ width: 80 }} />
+          <Progress percent={Math.round(((r.currentStudents || 0) / (r.maxStudents || 1)) * 100)} size="small" style={{ width: 80 }} />
         </Space>
       ),
     },
@@ -38,9 +42,12 @@ export default function ClassListSlot() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<PlusOutlined />}>Thêm lớp học</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)}>Thêm lớp học</Button>
       </div>
       <Table rowKey="id" columns={columns} dataSource={classes} loading={loading} />
+      <Modal title="Thêm lớp học" open={showForm} onCancel={() => setShowForm(false)} footer={null} destroyOnClose>
+        <ClassFormSlot onSuccess={() => { setShowForm(false); fetchClasses(); }} />
+      </Modal>
     </div>
   );
 }

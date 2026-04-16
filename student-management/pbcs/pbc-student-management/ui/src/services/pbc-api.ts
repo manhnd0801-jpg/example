@@ -7,7 +7,7 @@ const BASE_URL = import.meta.env.VITE_STUDENT_MGMT_URL || 'http://localhost:3002
 const api = axios.create({ baseURL: `${BASE_URL}/v1` });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
+  const token = localStorage.getItem('accessToken');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -20,16 +20,16 @@ export const studentApi = {
     api.get<FlexiblePayload<Student>>(`/students/${id}`),
 
   create: (data: Partial<Student>) =>
-    api.post<FlexiblePayload<Student>>('/students', { data, metadata: { tenantId: 'tenant-default' } }),
+    api.post<FlexiblePayload<Student>>('/students', { data, metadata: { tenantId: localStorage.getItem('tenantId') || 'dev-tenant' } }),
 
   update: (id: string, data: Partial<Student>) =>
-    api.put<FlexiblePayload<Student>>(`/students/${id}`, { data, metadata: { tenantId: 'tenant-default' } }),
+    api.put<FlexiblePayload<Student>>(`/students/${id}`, { data, metadata: { tenantId: localStorage.getItem('tenantId') || 'dev-tenant' } }),
 
   remove: (id: string) =>
     api.delete<FlexiblePayload<{ deleted: boolean }>>(`/students/${id}`),
 
   changeStatus: (id: string, newStatus: string) =>
-    api.patch<FlexiblePayload<Student>>(`/students/${id}/status`, { data: { newStatus }, metadata: { tenantId: 'tenant-default' } }),
+    api.patch<FlexiblePayload<Student>>(`/students/${id}/status`, { data: { newStatus }, metadata: { tenantId: localStorage.getItem('tenantId') || 'dev-tenant' } }),
 
   exportExcel: () =>
     api.get('/students/export', { responseType: 'blob' }),
