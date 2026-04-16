@@ -1,6 +1,6 @@
 // AI-GENERATED
-// Dynamic load PBC từ pbc-registry.json — lazy load theo route
-import registry from "../../pbc-registry.json";
+import registry from "../../../pbc-registry.json";
+import { REMOTE_IMPORT_MAP } from "./remote-imports";
 
 export interface PBCEntry {
   pbcId: string;
@@ -8,7 +8,6 @@ export interface PBCEntry {
   remoteUrl: string;
   scope: string;
   module: string;
-  customElementTag: string;
   routePrefix: string;
   enabled: boolean;
 }
@@ -17,25 +16,42 @@ export function getEnabledPBCs(): PBCEntry[] {
   return registry.pbcList.filter((pbc) => pbc.enabled) as PBCEntry[];
 }
 
-export async function loadPBC(entry: PBCEntry): Promise<void> {
-  const existingScript = document.querySelector(
-    `script[data-pbc="${entry.pbcId}"]`
+export function getPBCByRoute(pathname: string): PBCEntry | undefined {
+  return getEnabledPBCs().find(
+    (pbc) =>
+      pbc.pbcId !== "auth" &&
+      (pathname === pbc.routePrefix || pathname.startsWith(pbc.routePrefix + "/"))
   );
-  if (existingScript) return;
-
-  await new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = entry.remoteUrl;
-    script.dataset.pbc = entry.pbcId;
-    script.onload = () => resolve();
-    script.onerror = () =>
-      reject(new Error(`[pbc-loader] Failed to load ${entry.pbcId} from ${entry.remoteUrl}`));
-    document.head.appendChild(script);
-  });
 }
 
-export async function mountPBC(entry: PBCEntry, container: HTMLElement): Promise<void> {
-  await loadPBC(entry);
-  const el = document.createElement(entry.customElementTag);
-  container.appendChild(el);
+const moduleCache = new Map<string, unknown>();
+
+/**
+ * Import exposed module từ PBC remote.
+ * Dùng REMOTE_IMPORT_MAP với literal import strings để Vite transform đúng lúc build.
+ */
+export async function importFromRemote<T = unknown>(
+  entry: PBCEntry,
+  modulePath: string
+): Promise<T> {
+  // Normalize module path: './LoginSlot' → 'LoginSlot'
+  const normalizedModule = modulePath.replace(/^\.\//, "");
+  const key = `${entry.scope}/${normalizedModule}`;
+  const cacheKey = key;
+
+  if (moduleCache.has(cacheKey)) {
+    return moduleCache.get(cacheKey) as T;
+  }
+
+  const importFn = REMOTE_IMPORT_MAP[key];
+  if (!importFn) {
+    throw new Error(
+      `[pbc-loader] No import registered for '${key}'. ` +
+      `Add it to src/core/remote-imports.ts as a literal import string.`
+    );
+  }
+
+  const result = await importFn() as T;
+  moduleCache.set(cacheKey, result);
+  return result;
 }

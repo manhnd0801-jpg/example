@@ -6,6 +6,7 @@
   "category": "Education",
   "domain": "student-management",
   "includedPBCs": [
+    { "pbcId": "auth", "version": "0.1.0" },
     { "pbcId": "student-profile", "version": "1.0.0" },
     { "pbcId": "course-management", "version": "1.0.0" },
     { "pbcId": "enrollment-management", "version": "1.0.0" }
@@ -29,8 +30,8 @@
     "fontFamily": "Inter, sans-serif"
   },
   "security": {
-    "authPBC": "auth-service",
-    "publicRoutes": ["/health"],
+    "authPBC": "auth",
+    "publicRoutes": ["/health", "/login"],
     "defaultPolicy": "authenticated"
   },
   "i18n": {

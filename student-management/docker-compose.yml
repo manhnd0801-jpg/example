@@ -23,19 +23,87 @@ services:
 
   app-shell:
     build:
-      context: ./app-shell
+      context: .
+      dockerfile: app-shell/Dockerfile
     ports:
-      - "3000:3000"
+      - "3010:3010"
     environment:
       - VITE_KAFKA_BROKERS=kafka:29092
+      - VITE_TENANT_ID=dev-tenant
     depends_on:
-      - kafka
+      pbc-auth-ui:
+        condition: service_started
+      pbc-auth-api:
+        condition: service_healthy
+    # Cùng network với pbc-auth để nginx proxy hoạt động
+    # nginx proxy /remote/pbc-auth/ → http://pbc-auth-ui:3011/
+
+  # ── pbc-auth ────────────────────────────────────────────────
+  pbc-auth-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pbc_auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pbc_auth_db:/var/lib/postgresql/data
+      - ./pbcs/pbc-auth/db/migrations/001_create_roles_table.sql:/docker-entrypoint-initdb.d/001_create_roles_table.sql
+      - ./pbcs/pbc-auth/db/migrations/002_create_permissions_table.sql:/docker-entrypoint-initdb.d/002_create_permissions_table.sql
+      - ./pbcs/pbc-auth/db/migrations/003_create_role_permissions_table.sql:/docker-entrypoint-initdb.d/003_create_role_permissions_table.sql
+      - ./pbcs/pbc-auth/db/migrations/004_create_users_table.sql:/docker-entrypoint-initdb.d/004_create_users_table.sql
+      - ./pbcs/pbc-auth/db/migrations/005_create_refresh_tokens_table.sql:/docker-entrypoint-initdb.d/005_create_refresh_tokens_table.sql
+      - ./pbcs/pbc-auth/db/seed/99_admin_seed.sql:/docker-entrypoint-initdb.d/99_admin_seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pbc_auth"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  pbc-auth-api:
+    build:
+      context: ./pbcs/pbc-auth
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@pbc-auth-db:5432/pbc_auth
+      JWT_SECRET: change-me-in-production
+      JWT_EXPIRATION: 15m
+      JWT_REFRESH_EXPIRATION: 7d
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_GROUP_ID: cg.auth
+      KAFKA_CLIENT_ID: pbc-auth-api
+    depends_on:
+      pbc-auth-db:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: on-failure
+
+  pbc-auth-ui:
+    build:
+      context: ./pbcs/pbc-auth
+      dockerfile: docker/Dockerfile.ui
+    ports:
+      - "3011:3011"
+    depends_on:
+      pbc-auth-api:
+        condition: service_healthy
 
   pbc-student-profile:
     build:
       context: ./pbcs/pbc-student-profile
     ports:
-      - "3001:3001"
+      - "3012:3012"
     environment:
       - KAFKA_BROKERS=kafka:29092
     depends_on:
@@ -45,7 +113,7 @@ services:
     build:
       context: ./pbcs/pbc-course-management
     ports:
-      - "3002:3002"
+      - "3013:3013"
     environment:
       - KAFKA_BROKERS=kafka:29092
     depends_on:
@@ -55,8 +123,11 @@ services:
     build:
       context: ./pbcs/pbc-enrollment-management
     ports:
-      - "3003:3003"
+      - "3014:3014"
     environment:
       - KAFKA_BROKERS=kafka:29092
     depends_on:
       - kafka
+
+volumes:
+  pbc_auth_db:

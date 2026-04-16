@@ -1,6 +1,6 @@
 // AI-GENERATED
 // Route guard — đọc security config từ app-contract.json
-import contract from "../../app-contract.json";
+import contract from "../../../app-contract.json";
 
 export function isPublicRoute(pathname: string): boolean {
   return contract.security.publicRoutes.includes(pathname);

@@ -1,152 +1,196 @@
 # Student Management Portal
 
-Composed App quản lý sinh viên được xây dựng trên VNPT Composable Platform.
-
-## Tổng quan
-
-**Student Management Portal** là hệ thống quản lý sinh viên được xây dựng theo kiến trúc **Micro Frontend + Microservice**, sử dụng mô hình **Packaged Business Capability (PBC)**. Mỗi PBC là một đơn vị độc lập gồm UI (React + Vite) và Backend Service, giao tiếp với nhau qua **Kafka Event Bus**.
-
-## Kiến trúc
-
-```
-student-management-portal/
-├── app-shell/                    # React host shell (Module Federation)
-├── pbcs/
-│   ├── pbc-auth/                 # Authentication & Authorization
-│   ├── pbc-student-management/   # Quản lý Sinh viên
-│   ├── pbc-class-management/     # Quản lý Lớp học
-│   ├── pbc-course-management/    # Quản lý Khóa học
-│   ├── pbc-subject-management/   # Quản lý Môn học
-│   └── pbc-notification/         # Thông báo & Audit Log
-├── shared/
-│   └── shared-events/            # Kafka topic constants & event types
-├── docs/
-│   ├── BUSINESS-OVERVIEW.md      # Mô tả nghiệp vụ chi tiết từng PBC
-│   └── EVENT-FLOW.md             # Sơ đồ event flow toàn hệ thống
-├── app-contract.json             # Metadata & contract của App
-├── pbc-registry.json             # Registry load remote PBC runtime
-├── app-asyncapi.yaml             # Event orchestration contract
-├── app-openapi.yaml              # BFF API contract
-└── docker-compose.yml            # Chạy toàn bộ hệ thống local
-```
-
-## Tech Stack
-
-| Layer | Công nghệ |
-|-------|-----------|
-| App Shell | React 18, Vite 6, TypeScript 5 |
-| Micro Frontend | `@originjs/vite-plugin-federation` 1.3.6 (Module Federation) |
-| Micro Service | Node.js / NestJS (mỗi PBC) |
-| Event Bus | Apache Kafka 3.x (Confluent Platform 7.6) |
-| UI Strategy | Module Federation — shell load PBC qua `remoteEntry.js` |
-| i18n | Tiếng Việt (mặc định), Tiếng Anh |
-
-## Danh sách PBC
-
-| PBC | Mô tả | Route | Port |
-|-----|-------|-------|------|
-| `pbc-auth` | Đăng nhập, phân quyền RBAC, JWT | `/auth` | 3001 |
-| `pbc-student-management` | CRUD sinh viên, trạng thái, import/export | `/students` | 3002 |
-| `pbc-class-management` | CRUD lớp học, gán sinh viên, chuyển lớp | `/classes` | 3003 |
-| `pbc-course-management` | CRUD khóa học, quản lý học kỳ | `/courses` | 3004 |
-| `pbc-subject-management` | CRUD môn học, gán vào lớp/khóa | `/subjects` | 3005 |
-| `pbc-notification` | Thông báo hệ thống, audit log | `/notifications` | 3006 |
-
-App Shell: `http://localhost:3000`
+Hệ thống quản lý sinh viên xây dựng theo kiến trúc **Micro Frontend + Microservice** trên VNPT Composable Platform.
 
 ## Yêu cầu môi trường
 
-- Node.js >= 20
-- Docker & Docker Compose >= 2.x
-- npm >= 10
+| Công cụ | Phiên bản tối thiểu |
+|---------|---------------------|
+| Docker | >= 24.x |
+| Docker Compose | >= 2.x |
+| Node.js _(chỉ cần khi dev local)_ | >= 20 |
+| npm _(chỉ cần khi dev local)_ | >= 10 |
 
-## Chạy local
+---
 
-### 1. Khởi động toàn bộ hệ thống bằng Docker
+## Khởi động nhanh (Docker)
+
+> Chạy toàn bộ hệ thống chỉ với 2 lệnh.
 
 ```bash
+# 1. Clone repo và vào thư mục
+git clone <repo-url>
 cd student-management
-docker-compose up
+
+# 2. Build và khởi động
+docker compose -p student-mgmt up --build pbc-auth-db pbc-auth-api pbc-auth-ui app-shell
 ```
 
-Sau khi khởi động:
-- App Shell: http://localhost:3000
-- Kafka broker: `localhost:9092`
+Sau khi khởi động (~2-3 phút lần đầu):
 
-### 2. Chạy từng service riêng lẻ (development)
+| Service | URL |
+|---------|-----|
+| **App Shell** | http://localhost:3010 |
+| pbc-auth API | http://localhost:3001 |
+| pbc-auth UI | http://localhost:3011 |
+
+**Tài khoản mặc định:**
+
+| Trường | Giá trị |
+|--------|---------|
+| Username | `admin` |
+| Password | `Admin@123456` |
+| Tenant | `dev-tenant` |
+
+> ⚠️ Đổi mật khẩu sau khi đăng nhập lần đầu.
+
+---
+
+## Cấu trúc dự án
+
+```
+student-management/
+├── app-shell/                    # React host shell (Module Federation, port 3010)
+├── pbcs/
+│   └── pbc-auth/                 # Authentication & Authorization (port 3001/3011)
+│       ├── api/                  # NestJS API
+│       ├── ui/                   # React UI (Ant Design)
+│       ├── db/                   # PostgreSQL migrations & seed
+│       └── docker/               # Dockerfile + docker-compose.dev.yml
+├── shared/
+│   └── shared-events/            # Kafka topic constants & event types
+├── docs/
+│   ├── REQUIREMENTS.md           # Yêu cầu nghiệp vụ gốc
+│   ├── BUSINESS-OVERVIEW.md      # Mô tả chi tiết từng PBC
+│   └── EVENT-FLOW.md             # Sơ đồ event flow toàn hệ thống
+├── app-contract.json             # Metadata & contract của App
+├── pbc-registry.json             # Registry URL remote entry của từng PBC
+├── docker-compose.yml            # Compose toàn hệ thống
+└── README.md
+```
+
+---
+
+## Port convention
+
+| Service | Port | Mô tả |
+|---------|------|-------|
+| App Shell | 3010 | Nginx serve React build |
+| pbc-auth API | 3001 | NestJS REST API |
+| pbc-auth UI | 3011 | Nginx serve pbc-auth React build |
+| pbc-auth DB | 5433 | PostgreSQL (host port, tránh conflict) |
+| pbc-student-profile UI | 3012 | _(chưa implement)_ |
+| pbc-course-management UI | 3013 | _(chưa implement)_ |
+| pbc-enrollment-management UI | 3014 | _(chưa implement)_ |
+
+---
+
+## Chạy từng PBC độc lập (dev)
+
+Khi phát triển một PBC, không cần chạy toàn bộ stack:
 
 ```bash
-# App Shell
+# Chạy chỉ pbc-auth (API + UI + DB, không cần Kafka)
+docker compose -p pbc-auth -f pbcs/pbc-auth/docker/docker-compose.dev.yml up --build
+
+# Truy cập UI standalone của pbc-auth
+open http://localhost:3011
+```
+
+Tài khoản dev: `admin` / `Admin@123456` / tenant `dev-tenant`
+
+---
+
+## Phát triển App Shell
+
+```bash
 cd app-shell
+
+# Cài dependencies
 npm install
+
+# Chạy dev server (port 3010)
+# Yêu cầu pbc-auth đang chạy ở port 3011
 npm run dev
 
-# Một PBC bất kỳ (ví dụ pbc-student-management)
-cd pbcs/pbc-student-management/ui
-npm install
-npm run dev
-
-cd pbcs/pbc-student-management/api
-npm install
-npm run start:dev
+# Build production
+npm run build
 ```
 
-### 3. Biến môi trường
+Biến môi trường (`app-shell/.env`):
 
-Mỗi PBC cần file `.env` tại thư mục `api/`. Tham khảo `api/.env.example` trong từng PBC.
-
-| Biến | Mô tả | Ví dụ |
-|------|-------|-------|
-| `KAFKA_BROKERS` | Địa chỉ Kafka broker | `kafka:29092` (Docker) / `localhost:9092` (local) |
-| `DATABASE_URL` | Connection string DB | `postgresql://user:pass@localhost:5432/db` |
-| `JWT_SECRET` | Secret ký JWT | _(không commit giá trị thật)_ |
-
-App Shell cần file `.env` tại `app-shell/`:
-
-| Biến | Mô tả | Ví dụ |
-|------|-------|-------|
-| `VITE_KAFKA_BROKERS` | Kafka brokers cho shell | `kafka:29092` |
-
-## Event Bus
-
-Hệ thống giao tiếp liên PBC qua **Kafka**. Topic naming convention:
-
-```
-pbc.<pbcId>.<aggregate>.<verb>
-
-Ví dụ:
-  pbc.student-management.student.created
-  pbc.class-management.student.assigned-to-class
-  pbc.auth.user.role-changed
+```env
+VITE_KAFKA_BROKERS=localhost:9092
+VITE_TENANT_ID=dev-tenant
 ```
 
-Xem chi tiết tất cả topics và consumer groups tại [`docs/EVENT-FLOW.md`](./docs/EVENT-FLOW.md).
+---
+
+## Thêm PBC mới
+
+1. Tạo thư mục `pbcs/pbc-<name>/` theo cấu trúc PBC-BLUEPRINT.md
+2. Thêm vào `app-contract.json`:
+   ```json
+   { "pbcId": "<name>", "version": "1.0.0" }
+   ```
+3. Thêm vào `pbc-registry.json`:
+   ```json
+   {
+     "pbcId": "<name>",
+     "remoteUrl": "http://localhost:<port>/assets/remoteEntry.js",
+     "scope": "pbc_<name_snake>",
+     "module": "./bootstrap",
+     "routePrefix": "/<path>",
+     "enabled": true
+   }
+   ```
+4. Thêm service vào `docker-compose.yml`
+5. Thêm import literal vào `app-shell/src/core/remote-imports.ts`
+6. Cập nhật `docs/`
+
+---
+
+## Roles & Phân quyền
+
+| Role | Quyền |
+|------|-------|
+| `ADMIN` | Toàn quyền — quản lý user, role, permission |
+| `ACADEMIC_STAFF` | Quản lý user, sinh viên, lớp, khóa, môn |
+| `TEACHER` | Xem danh sách lớp, sinh viên |
+| `STUDENT` | Xem thông tin cá nhân |
+
+---
 
 ## Tài liệu
 
 | File | Nội dung |
 |------|----------|
-| [`docs/REQUIREMENTS.md`](./docs/REQUIREMENTS.md) | Yêu cầu nghiệp vụ gốc — mô tả từng PBC, dữ liệu, event tổng quan |
-| [`docs/BUSINESS-OVERVIEW.md`](./docs/BUSINESS-OVERVIEW.md) | Mô tả nghiệp vụ, data model, API, events từng PBC |
-| [`docs/EVENT-FLOW.md`](./docs/EVENT-FLOW.md) | Sơ đồ event flow, bảng topics, payload envelope chuẩn |
-| [`app-contract.json`](./app-contract.json) | Metadata & contract của App (nguồn sự thật cấu hình) |
-| [`pbc-registry.json`](./pbc-registry.json) | Registry URL remote entry của từng PBC |
-| [`app-asyncapi.yaml`](./app-asyncapi.yaml) | Event orchestration contract (AsyncAPI 2.6) |
-| [`app-openapi.yaml`](./app-openapi.yaml) | BFF HTTP API contract (OpenAPI 3.1) |
+| [`docs/REQUIREMENTS.md`](./docs/REQUIREMENTS.md) | Yêu cầu nghiệp vụ gốc |
+| [`docs/BUSINESS-OVERVIEW.md`](./docs/BUSINESS-OVERVIEW.md) | Mô tả chi tiết từng PBC |
+| [`docs/EVENT-FLOW.md`](./docs/EVENT-FLOW.md) | Event flow, Kafka topics, payload chuẩn |
+| [`app-contract.json`](./app-contract.json) | Contract của App |
+| [`pbc-registry.json`](./pbc-registry.json) | Registry URL remote entry |
+| [`blueprint/PBC-BLUEPRINT.md`](../blueprint/PBC-BLUEPRINT.md) | Quy chuẩn sinh PBC |
+| [`blueprint/APP-BLUEPRINTV2.md`](../blueprint/APP-BLUEPRINTV2.md) | Quy chuẩn sinh App |
 
-## Roles & Phân quyền
+---
 
-| Role | Mô tả |
-|------|-------|
-| `ADMIN` | Quản trị toàn hệ thống |
-| `ACADEMIC_STAFF` | Ban đào tạo — quản lý lớp, khóa, môn |
-| `TEACHER` | Giảng viên — xem danh sách lớp, sinh viên |
-| `STUDENT` | Sinh viên — xem thông tin cá nhân, lịch học |
+## Troubleshooting
 
-## Quy ước phát triển
+**Trang trắng khi vào http://localhost:3010**
+- Kiểm tra pbc-auth-ui đang chạy: `docker ps | grep pbc-auth-ui`
+- Kiểm tra proxy: `curl http://localhost:3010/remote/pbc-auth/assets/remoteEntry.js`
 
-- Mỗi PBC là một **bounded context độc lập** — không import code trực tiếp từ PBC khác.
-- Giao tiếp liên PBC **chỉ** qua Kafka topic hoặc HTTP theo contract đã công bố.
-- Không hard-code topic name trong code — dùng constants từ `shared/shared-events/`.
-- Mọi Kafka message phải có envelope chuẩn: `eventId`, `eventType`, `occurredAt`, `tenantId`, `correlationId`, `data`.
-- Thêm PBC mới: cập nhật `app-contract.json`, `pbc-registry.json`, `docker-compose.yml` và `docs/`.
+**Login lỗi "Tên đăng nhập hoặc mật khẩu không đúng"**
+- Đảm bảo gửi đúng `tenantId: "dev-tenant"` trong request
+- Kiểm tra DB đã seed: `docker exec student-mgmt-pbc-auth-db-1 psql -U postgres -d pbc_auth -c "SELECT username FROM users;"`
+
+**Port conflict**
+- Port 5432 bị chiếm: pbc-auth-db dùng host port 5433 để tránh conflict
+- Port 9092 bị chiếm: dừng Kafka của project khác hoặc bỏ service kafka khỏi lệnh up
+
+**Rebuild sau khi sửa code**
+```bash
+docker compose -p student-mgmt -f docker-compose.yml build <service-name>
+docker compose -p student-mgmt -f docker-compose.yml up -d <service-name>
+```

@@ -2,9 +2,18 @@
   "version": "1.0",
   "pbcList": [
     {
+      "pbcId": "auth",
+      "version": "0.1.0",
+      "remoteUrl": "http://localhost:3010/remote/pbc-auth/assets/remoteEntry.js",
+      "scope": "pbc_auth",
+      "module": "./bootstrap",
+      "routePrefix": "/login",
+      "enabled": true
+    },
+    {
       "pbcId": "student-profile",
       "version": "1.0.0",
-      "remoteUrl": "http://localhost:3001/assets/remoteEntry.js",
+      "remoteUrl": "http://localhost:3012/assets/remoteEntry.js",
       "scope": "pbc_student_profile",
       "module": "./bootstrap",
       "routePrefix": "/students",
@@ -13,7 +22,7 @@
     {
       "pbcId": "course-management",
       "version": "1.0.0",
-      "remoteUrl": "http://localhost:3002/assets/remoteEntry.js",
+      "remoteUrl": "http://localhost:3013/assets/remoteEntry.js",
       "scope": "pbc_course_management",
       "module": "./bootstrap",
       "routePrefix": "/courses",
@@ -22,7 +31,7 @@
     {
       "pbcId": "enrollment-management",
       "version": "1.0.0",
-      "remoteUrl": "http://localhost:3003/assets/remoteEntry.js",
+      "remoteUrl": "http://localhost:3014/assets/remoteEntry.js",
       "scope": "pbc_enrollment_management",
       "module": "./bootstrap",
       "routePrefix": "/enrollments",

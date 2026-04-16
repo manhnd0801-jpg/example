@@ -9,16 +9,31 @@ export default defineConfig({
     federation({
       name: "app_shell",
       remotes: {
-        // Remotes được load động từ pbc-registry.json tại runtime
-        // Không hard-code ở đây — xem pbc-loader.ts
+        // Dùng proxy path — cùng origin với app-shell, không có CORS
+        // nginx proxy /remote/pbc-auth/ → pbc-auth-ui:3011/
+        pbc_auth: "http://localhost:3010/remote/pbc-auth/assets/remoteEntry.js",
       },
-      shared: ["react", "react-dom"],
+      shared: {
+        react: { singleton: true, requiredVersion: "^18.0.0" },
+        "react-dom": { singleton: true, requiredVersion: "^18.0.0" },
+        antd: { singleton: true, requiredVersion: "^5.0.0" },
+      },
     }),
   ],
   server: {
-    port: 3000,
+    port: 3010,
+    cors: true,
+    proxy: {
+      // Dev mode: proxy /remote/pbc-auth/ → localhost:3011
+      "/remote/pbc-auth": {
+        target: "http://localhost:3011",
+        rewrite: (path) => path.replace(/^\/remote\/pbc-auth/, ""),
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     target: "esnext",
+    minify: false,
   },
 });
