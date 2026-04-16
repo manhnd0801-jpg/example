@@ -1,5 +1,5 @@
 # VNPT COMPOSABLE PBC BLUEPRINT (AI Generation Template)
-Phiên bản: 2.5
+Phiên bản: 2.6
 Nền tảng: VNPT Composable Platform (AI-First & Cloud Development)
 
 ## QUY TẮC BẮT BUỘC AI PHẢI TUÂN THEO (KHÔNG ĐƯỢC VI PHẠM)
@@ -427,7 +427,11 @@ Khối JSON dưới đây dùng **chuỗi mô tả semantics** tại từng fiel
     "dockerLayout": "string - quy ước vị trí Dockerfile / compose",
     "dataClassification": "string - optional - mức phân loại dữ liệu / mã hóa attributes nếu có",
     "requiredEnvVars": ["array of string - optional - tên biến môi trường bắt buộc (ví dụ NATS_URL, DATABASE_URL, JWT_SECRET); khớp api/.env.example"],
-    "apiAuthNotes": "string - optional - route public (health) vs JWT; guard global hay per-controller"
+    "apiAuthNotes": "string - optional - mô tả chi tiết: route nào public (health, login...), route nào cần JWT, route nào cần role cụ thể. Ví dụ: 'GET /health public; POST /v1/auth/login public; GET /v1/users yêu cầu JWT + role ADMIN hoặc ACADEMIC_STAFF'",
+    "rbacMatrix": {
+      "ROLE_NAME": ["array of string - danh sách permission (resource:action) mà role này được phép"]
+    },
+    "bootstrapNotes": "string - optional - mô tả cách tạo dữ liệu ban đầu khi deploy lần đầu. Ví dụ: 'Admin đầu tiên tạo qua db/seed/99_admin_seed.sql; không có form đăng ký public'"
   },
 
   "config": {

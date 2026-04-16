@@ -52,7 +52,11 @@
         "/v1/auth/reset-password",
         "/v1/auth/change-password",
         "/v1/users",
+        "/v1/users/:userId",
+        "/v1/users/:userId/role",
         "/v1/roles",
+        "/v1/roles/:roleId",
+        "/v1/roles/:roleId/permissions",
         "/v1/permissions"
       ]
     },
@@ -99,7 +103,14 @@
       "SMTP_USER",
       "SMTP_PASSWORD"
     ],
-    "apiAuthNotes": "GET /health và GET /ready là public. POST /v1/auth/login, /v1/auth/refresh, /v1/auth/forgot-password, /v1/auth/reset-password là public. Tất cả endpoint còn lại yêu cầu JWT. CRUD /v1/users và /v1/roles yêu cầu thêm role ADMIN."
+    "apiAuthNotes": "GET /health và GET /ready là public. POST /v1/auth/login, /v1/auth/refresh, /v1/auth/forgot-password, /v1/auth/reset-password là public. Tất cả endpoint còn lại yêu cầu JWT (JwtAuthGuard global). Phân quyền theo role (RolesGuard global): /v1/users — ADMIN và ACADEMIC_STAFF; /v1/roles và /v1/permissions — chỉ ADMIN. STUDENT và TEACHER chỉ được dùng /v1/auth/* và /v1/auth/change-password.",
+    "rbacMatrix": {
+      "ADMIN":          ["user:read", "user:write", "user:delete", "role:read", "role:write", "role:delete", "permission:read", "permission:write"],
+      "ACADEMIC_STAFF": ["user:read", "user:write"],
+      "TEACHER":        [],
+      "STUDENT":        []
+    },
+    "bootstrapNotes": "Tài khoản admin đầu tiên được tạo tự động qua db/seed/99_admin_seed.sql khi Docker khởi động. Không có form đăng ký public — đây là hệ thống nội bộ. Admin tạo tài khoản cho người dùng khác qua POST /v1/users."
   },
 
   "config": {
