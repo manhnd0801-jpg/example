@@ -1,38 +1,49 @@
 // AI-GENERATED
 // Standalone App — dùng khi chạy pbc-auth UI độc lập (npm run dev)
-// Đây là App Shell tối giản chỉ cho PBC này, không phải App Shell thật của platform
 // Khi deploy lên platform, App Shell thật sẽ load các slot qua Module Federation
 import React, { useState } from 'react';
-import { ConfigProvider, Layout, Menu, Typography, theme } from 'antd';
-import {
-  LoginOutlined,
-  UserOutlined,
-  ProfileOutlined,
-} from '@ant-design/icons';
+import { ConfigProvider, Layout, Menu, Typography, theme, Result, Button } from 'antd';
+import { LoginOutlined, UserOutlined, ProfileOutlined } from '@ant-design/icons';
 import viVN from 'antd/locale/vi_VN';
 import LoginSlot from './slots/LoginSlot';
 import ProfileSlot from './slots/ProfileSlot';
 import UserManagementSlot from './slots/UserManagementSlot';
-import type { LoginResponseData, UserDto } from './types';
+import type { LoginResponseData, UserDto, UserRole } from './types';
 
 const { Header, Sider, Content } = Layout;
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 // Tenant ID đọc từ env — không hard-code
-// Đặt VITE_DEV_TENANT_ID trong ui/.env khi chạy local
 const TENANT_ID = import.meta.env.VITE_DEV_TENANT_ID ?? 'dev-tenant';
 
 type ActiveSlot = 'login' | 'profile' | 'user-management';
 
-const NAV_ITEMS = [
-  { key: 'login',           icon: <LoginOutlined />,   label: 'Login Form' },
-  { key: 'profile',         icon: <ProfileOutlined />, label: 'Profile' },
-  { key: 'user-management', icon: <UserOutlined />,    label: 'User Management' },
-];
+// Các role được phép vào user-management
+const USER_MANAGEMENT_ROLES: UserRole[] = ['ADMIN', 'ACADEMIC_STAFF'];
 
 const StandaloneApp: React.FC = () => {
   const [activeSlot, setActiveSlot] = useState<ActiveSlot>('login');
   const [currentUser, setCurrentUser] = useState<UserDto | null>(null);
+
+  const canManageUsers = currentUser
+    ? USER_MANAGEMENT_ROLES.includes(currentUser.role)
+    : false;
+
+  // Chỉ hiện menu item phù hợp với trạng thái đăng nhập và role
+  const navItems = [
+    // Chưa đăng nhập → chỉ hiện Login
+    ...(!currentUser
+      ? [{ key: 'login', icon: <LoginOutlined />, label: 'Đăng nhập' }]
+      : []),
+    // Đã đăng nhập → hiện Profile
+    ...(currentUser
+      ? [{ key: 'profile', icon: <ProfileOutlined />, label: 'Hồ sơ cá nhân' }]
+      : []),
+    // Đã đăng nhập + có quyền → hiện User Management
+    ...(canManageUsers
+      ? [{ key: 'user-management', icon: <UserOutlined />, label: 'Quản lý người dùng' }]
+      : []),
+  ];
 
   const handleLoginSuccess = (data: LoginResponseData) => {
     setCurrentUser(data.user);
@@ -55,13 +66,19 @@ const StandaloneApp: React.FC = () => {
           />
         );
       case 'profile':
-        return (
-          <ProfileSlot
-            currentUser={currentUser ?? undefined}
-            onLogout={handleLogout}
-          />
-        );
+        return <ProfileSlot currentUser={currentUser ?? undefined} onLogout={handleLogout} />;
       case 'user-management':
+        // Double-check ở UI — dù menu đã ẩn, vẫn block nếu navigate trực tiếp
+        if (!canManageUsers) {
+          return (
+            <Result
+              status="403"
+              title="Không có quyền truy cập"
+              subTitle="Chức năng này chỉ dành cho Admin và Ban đào tạo."
+              extra={<Button onClick={() => setActiveSlot('profile')}>Quay lại</Button>}
+            />
+          );
+        }
         return <UserManagementSlot />;
       default:
         return null;
@@ -77,9 +94,6 @@ const StandaloneApp: React.FC = () => {
           gap: 12,
           background: 'var(--pbc-primary-color, #0d6efd)',
         }}>
-          {/* <Title level={5} style={{ color: '#fff', margin: 0 }}>
-            pbc-auth — Standalone
-          </Title> */}
           {currentUser && (
             <Text style={{ color: 'rgba(255,255,255,0.8)', marginLeft: 'auto' }}>
               {currentUser.username} ({currentUser.role})
@@ -92,7 +106,7 @@ const StandaloneApp: React.FC = () => {
             <Menu
               mode="inline"
               selectedKeys={[activeSlot]}
-              items={NAV_ITEMS}
+              items={navItems}
               onClick={({ key }) => setActiveSlot(key as ActiveSlot)}
               style={{ height: '100%', borderRight: 0 }}
             />

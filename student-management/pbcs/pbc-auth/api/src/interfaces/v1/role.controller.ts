@@ -4,9 +4,11 @@ import {
   Body, Param, Req, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { RoleService } from '../../core/service/role.service';
+import { Roles } from '../../core/guards/roles.guard';
 import { buildMetadata } from '../metadata.helper';
 
 @Controller('v1/roles')
+@Roles('ADMIN')   // Chỉ ADMIN được quản lý roles
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 

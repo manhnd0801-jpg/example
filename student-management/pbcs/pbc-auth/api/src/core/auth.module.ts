@@ -17,6 +17,7 @@ import { RoleService } from './service/role.service';
 
 import { JwtStrategy } from './guards/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
 
 import { EventPublisher } from '../infrastructure/events/event-publisher';
 
@@ -44,10 +45,8 @@ import { PermissionController } from '../interfaces/v1/permission.controller';
     RoleService,
     JwtStrategy,
     EventPublisher,
-    {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
   controllers: [AuthController, UserController, RoleController, PermissionController],
 })

@@ -4,9 +4,11 @@ import {
   Body, Param, Query, Req, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { UserService } from '../../core/service/user.service';
+import { Roles } from '../../core/guards/roles.guard';
 import { buildMetadata } from '../metadata.helper';
 
 @Controller('v1/users')
+@Roles('ADMIN', 'ACADEMIC_STAFF')   // Chỉ ADMIN và ACADEMIC_STAFF được quản lý user
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
