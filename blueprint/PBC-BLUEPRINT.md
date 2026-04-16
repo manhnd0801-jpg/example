@@ -242,11 +242,41 @@ federation({
 ### Phân biệt `extensions/` và `api/.../hooks`
 - **`api/infrastructure/hooks/`**: hook **chạy thật** trong runtime API (before/after request hoặc use case).
 - **`extensions/hooks/`**: tài liệu, template, hoặc artifact để **tùy biến sau** / AI — không giả định được load tự động trừ khi platform có loader riêng (ghi rõ trong README PBC).
+- **Controller completeness**: mọi endpoint khai trong `openapi.yaml` và `capabilities.api.endpoints` của `pbc-contract.json` **phải có controller tương ứng** được đăng ký trong module. Sau khi sinh code, AI phải tự kiểm tra: số lượng `@Controller` + route handler phải khớp với số path trong OpenAPI. Thiếu controller = route 404 khi chạy — không phát hiện được lúc build.
 
 ### Docker (linh hoạt)
 - **Bắt buộc**: multi-stage image cho UI và API khi có UI/API.
 - **Đường dẫn**: có thể `docker/Dockerfile.*` hoặc `ui/Dockerfile`, `api/Dockerfile`, `docker-compose.dev.yml` ở root — phải thống nhất trong README và `pbc-contract.properties.dockerLayout`.
 - Compose local nên gồm **NATS** (và JetStream nếu dùng) khi PBC có async.
+- **`npm ci` yêu cầu `package-lock.json`**. Nếu repo chưa có lockfile, dùng `npm install` trong Dockerfile thay vì `npm ci`; hoặc commit `package-lock.json` vào repo. Không để Dockerfile fail vì thiếu lockfile.
+- **Nginx port**: khi UI serve trên port khác 80, phải tạo `nginx.conf` riêng với `listen <port>;` và mount vào `/etc/nginx/conf.d/default.conf`. Không dùng image nginx mặc định mà không cấu hình port.
+- **`depends_on` với health check**: API và UI phải `depends_on` DB/broker với `condition: service_healthy`, không chỉ `condition: service_started`. DB phải có `healthcheck` thực sự (ví dụ `pg_isready`).
+- **Messaging broker optional trong dev**: khi chạy PBC độc lập không cần broker, tạo `docker-compose.dev.yml` riêng không có Kafka/NATS. Messaging client phải graceful khi broker không available — giới hạn retry (`retries: 3`) và không block `onModuleInit`.
+
+**Mẫu `docker-compose.dev.yml` chuẩn (PBC độc lập, không Kafka):**
+```yaml
+services:
+  pbc-xxx-db:
+    image: postgres:16-alpine
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d <dbname>"]
+      interval: 5s
+      retries: 10
+      start_period: 5s
+
+  pbc-xxx-api:
+    build: { context: .., dockerfile: docker/Dockerfile.api }
+    depends_on:
+      pbc-xxx-db:
+        condition: service_healthy
+    restart: on-failure   # tự restart nếu crash khi DB chưa sẵn sàng
+
+  pbc-xxx-ui:
+    build: { context: .., dockerfile: docker/Dockerfile.ui }
+    depends_on:
+      pbc-xxx-api:
+        condition: service_healthy
+```
 
 ### `manifest.json` (UI)
 Tối thiểu nên có: `pbcId`, `version`, danh sách **slots** (id + component entry), **exposedModule** / federation name, tham chiếu `design-tokens.css`, `defaultLocale`, và mapping **event** UI ↔ subject NATS (hoặc tên channel AsyncAPI).
@@ -282,6 +312,8 @@ Khuyến nghị chuẩn hóa thêm để tương thích App Blueprint:
     INSERT INTO ... (tenant_id) VALUES (v_tenant_id) ON CONFLICT DO NOTHING;
   END $$;
   ```
+- **Bcrypt hash trong seed phải được verify** trước khi commit. Sau khi tạo hash, chạy lệnh verify trong cùng runtime: `node -e "require('bcrypt').compare('<password>','<hash>').then(console.log)"` — kết quả phải là `true`. Hash sai sẽ khiến login luôn thất bại mà không có lỗi rõ ràng.
+- **Seed cho dev/local** (`db/seed/99_admin_seed.sql` hoặc tương đương): dùng plain SQL (không DO block với session variable) để PostgreSQL `docker-entrypoint-initdb.d` tự chạy được. Mount từng file migration và seed trực tiếp vào `/docker-entrypoint-initdb.d/` — PostgreSQL chỉ chạy file `.sql` ở root thư mục đó, không đệ quy vào subfolder.
 
 ### API bootstrap & chạy độc lập
 - **Phạm vi stack:** Yêu cầu trong các mục bootstrap, health, logging, JWT, `.env` là **trung lập ngôn ngữ** — áp dụng cho mọi `technologies.api`. Các ví dụ **`main.ts` / `app.module.ts`**, **Terminus**, **JwtAuthGuard**, **Winston / Pino** chỉ là **minh họa cho Node/NestJS**; stack khác (Spring Boot, Gin/Fiber, FastAPI, …) phải có **phần tử tương đương** đạt cùng mục tiêu.
@@ -314,6 +346,7 @@ Khuyến nghị chuẩn hóa thêm để tương thích App Blueprint:
 - **Không** hard-code trong source: URL **NATS** (`nats://…`), connection DB, mật khẩu, API key, broker bất kỳ — chỉ đọc từ **biến môi trường** (hoặc secret manager). Theo quy tắc 11, **mặc định NATS**; nếu dùng broker khác phải ghi trong `pbc-contract.json` và vẫn đọc qua env.
 - Kèm **`api/.env.example`** (hoặc root PBC) liệt kê tên biến **không** giá trị thật; `.env` thật trong `.gitignore`. Có thể ghi danh sách biến bắt buộc trong `pbc-contract.properties.requiredEnvVars` (xem template contract).
 - Kèm **`ui/.env.example`** liệt kê các biến `VITE_*` cần thiết cho UI (ví dụ `VITE_AUTH_API_URL`, `VITE_DEV_TENANT_ID`); `.env` thật trong `.gitignore`. Không hard-code URL API hay tenant ID trong source UI.
+- **Messaging client phải graceful khi broker không available**: giới hạn retry (ví dụ `retries: 3` với KafkaJS, hoặc `maxReconnectAttempts` với NATS), bắt lỗi trong `onModuleInit` và log warning thay vì throw — API vẫn phải start được khi broker chưa sẵn sàng. Ghi rõ trong README rằng event sẽ bị drop cho đến khi broker available.
 
 ### Sự kiện: idempotency & phiên bản
 - Message có thể mang `eventId`, `schemaVersion`, `occurredAt`; consumer **idempotent** theo `eventId` hoặc `Nats-Msg-Id` khi JetStream.

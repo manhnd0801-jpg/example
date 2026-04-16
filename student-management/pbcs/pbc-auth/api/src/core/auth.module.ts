@@ -13,6 +13,7 @@ import { RefreshTokenEntity } from './domain/refresh-token.entity';
 
 import { AuthService } from './service/auth.service';
 import { UserService } from './service/user.service';
+import { RoleService } from './service/role.service';
 
 import { JwtStrategy } from './guards/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -21,6 +22,8 @@ import { EventPublisher } from '../infrastructure/events/event-publisher';
 
 import { AuthController } from '../interfaces/v1/auth.controller';
 import { UserController } from '../interfaces/v1/user.controller';
+import { RoleController } from '../interfaces/v1/role.controller';
+import { PermissionController } from '../interfaces/v1/permission.controller';
 
 @Module({
   imports: [
@@ -38,6 +41,7 @@ import { UserController } from '../interfaces/v1/user.controller';
   providers: [
     AuthService,
     UserService,
+    RoleService,
     JwtStrategy,
     EventPublisher,
     {
@@ -45,6 +49,6 @@ import { UserController } from '../interfaces/v1/user.controller';
       useClass: JwtAuthGuard,
     },
   ],
-  controllers: [AuthController, UserController],
+  controllers: [AuthController, UserController, RoleController, PermissionController],
 })
 export class AuthModule {}

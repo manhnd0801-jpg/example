@@ -77,9 +77,9 @@ const StandaloneApp: React.FC = () => {
           gap: 12,
           background: 'var(--pbc-primary-color, #0d6efd)',
         }}>
-          <Title level={5} style={{ color: '#fff', margin: 0 }}>
+          {/* <Title level={5} style={{ color: '#fff', margin: 0 }}>
             pbc-auth — Standalone
-          </Title>
+          </Title> */}
           {currentUser && (
             <Text style={{ color: 'rgba(255,255,255,0.8)', marginLeft: 'auto' }}>
               {currentUser.username} ({currentUser.role})

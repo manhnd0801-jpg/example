@@ -1,0 +1,82 @@
+# AI-GENERATED
+# Compose nhẹ để chạy pbc-auth độc lập (không cần Kafka)
+# Kafka producer sẽ log warning khi không connect — không ảnh hưởng chức năng auth
+#
+# Usage:
+#   docker compose -f student-management/pbcs/pbc-auth/docker/docker-compose.dev.yml up --build
+#
+# Tài khoản mặc định sau khi seed:
+#   username: admin  |  password: Admin@123456  |  tenant: dev-tenant
+#   ⚠️  Đổi mật khẩu sau khi đăng nhập lần đầu
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────
+  pbc-auth-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pbc_auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"   # 5433 để tránh conflict với postgres khác đang chạy
+    volumes:
+      - pbc_auth_db_dev:/var/lib/postgresql/data
+      # Migrations — chạy theo thứ tự prefix số
+      - ../db/migrations/001_create_roles_table.sql:/docker-entrypoint-initdb.d/001_create_roles_table.sql
+      - ../db/migrations/002_create_permissions_table.sql:/docker-entrypoint-initdb.d/002_create_permissions_table.sql
+      - ../db/migrations/003_create_role_permissions_table.sql:/docker-entrypoint-initdb.d/003_create_role_permissions_table.sql
+      - ../db/migrations/004_create_users_table.sql:/docker-entrypoint-initdb.d/004_create_users_table.sql
+      - ../db/migrations/005_create_refresh_tokens_table.sql:/docker-entrypoint-initdb.d/005_create_refresh_tokens_table.sql
+      # Seed — chạy sau migrations (prefix 99)
+      - ../db/seed/99_admin_seed.sql:/docker-entrypoint-initdb.d/99_admin_seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pbc_auth"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  # ── NestJS API ───────────────────────────────────────────────
+  pbc-auth-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      LOG_LEVEL: debug
+      DATABASE_URL: postgresql://postgres:postgres@pbc-auth-db:5432/pbc_auth
+      JWT_SECRET: dev-secret-change-in-production
+      JWT_EXPIRATION: 15m
+      JWT_REFRESH_EXPIRATION: 7d
+      KAFKA_BROKERS: localhost:9092
+      KAFKA_GROUP_ID: cg.auth
+      KAFKA_CLIENT_ID: pbc-auth-api
+      TENANT_HEADER_NAME: X-Tenant-Id
+    depends_on:
+      pbc-auth-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: on-failure
+
+  # ── React UI ─────────────────────────────────────────────────
+  pbc-auth-ui:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ui
+    ports:
+      - "3011:3011"
+    depends_on:
+      pbc-auth-api:
+        condition: service_healthy
+
+volumes:
+  pbc_auth_db_dev:

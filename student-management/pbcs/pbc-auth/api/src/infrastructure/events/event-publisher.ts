@@ -13,13 +13,24 @@ export class EventPublisher implements OnModuleInit, OnModuleDestroy {
     const kafka = new Kafka({
       clientId: this.config.get('KAFKA_CLIENT_ID', 'pbc-auth-api'),
       brokers: this.config.getOrThrow<string>('KAFKA_BROKERS').split(','),
+      retry: {
+        retries: 3,           // Chỉ retry 3 lần khi không có Kafka
+        initialRetryTime: 300,
+        factor: 2,
+      },
     });
     this.producer = kafka.producer();
   }
 
   async onModuleInit(): Promise<void> {
-    await this.producer.connect();
-    this.logger.log('Kafka producer connected');
+    try {
+      await this.producer.connect();
+      this.logger.log('Kafka producer connected');
+    } catch (err) {
+      // Kafka không available — log warning nhưng không crash API
+      // Các event sẽ bị bỏ qua cho đến khi Kafka sẵn sàng
+      this.logger.warn(`Kafka producer failed to connect: ${(err as Error).message}. Events will be dropped until Kafka is available.`);
+    }
   }
 
   async onModuleDestroy(): Promise<void> {
