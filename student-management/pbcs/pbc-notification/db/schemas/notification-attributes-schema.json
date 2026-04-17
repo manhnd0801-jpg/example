@@ -1,0 +1,29 @@
+{
+  "title": "NotificationAttributes",
+  "description": "Schema cho cột metadata JSON trong bảng notifications",
+  "type": "object",
+  "properties": {
+    "actionUrl": {
+      "type": "string",
+      "description": "URL điều hướng khi click vào thông báo"
+    },
+    "resourceType": {
+      "type": "string",
+      "description": "Loại tài nguyên liên quan (student, class, course...)"
+    },
+    "resourceId": {
+      "type": "string",
+      "description": "ID tài nguyên liên quan"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "description": "Mức độ ưu tiên của thông báo"
+    },
+    "expiresAt": {
+      "type": "string",
+      "description": "Thời điểm hết hạn thông báo (ISO 8601)"
+    }
+  },
+  "additionalProperties": true
+}

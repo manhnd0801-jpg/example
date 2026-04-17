@@ -1,0 +1,18 @@
+{
+  "notification": {
+    "title": "Thông báo",
+    "markRead": "Đánh dấu đã đọc",
+    "dismiss": "Ẩn thông báo",
+    "unread": "Chưa đọc",
+    "read": "Đã đọc",
+    "dismissed": "Đã ẩn",
+    "noNotifications": "Không có thông báo mới"
+  },
+  "auditLog": {
+    "title": "Nhật ký hệ thống",
+    "action": "Hành động",
+    "resource": "Tài nguyên",
+    "user": "Người dùng",
+    "time": "Thời gian"
+  }
+}

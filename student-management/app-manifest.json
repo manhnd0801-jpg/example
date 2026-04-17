@@ -1,0 +1,91 @@
+{
+  "appId": "student-management",
+  "version": "1.0.0",
+  "name": "Student Management Portal",
+  "description": "Ứng dụng quản lý sinh viên được compose từ nhiều PBC",
+  "category": "Education",
+  "domain": "student-management",
+
+  "includedPBCs": [
+    {
+      "id": "pbc-auth",
+      "version": "^0.1.0",
+      "minVersion": "0.1.0",
+      "breaking": false
+    },
+    {
+      "id": "pbc-student-management",
+      "version": "^1.0.0",
+      "minVersion": "1.0.0",
+      "breaking": false
+    },
+    {
+      "id": "pbc-class-management",
+      "version": "^1.0.0",
+      "minVersion": "1.0.0",
+      "breaking": false
+    },
+    {
+      "id": "pbc-course-management",
+      "version": "^1.0.0",
+      "minVersion": "1.0.0",
+      "breaking": false
+    },
+    {
+      "id": "pbc-subject-management",
+      "version": "^1.0.0",
+      "minVersion": "1.0.0",
+      "breaking": false
+    },
+    {
+      "id": "pbc-notification",
+      "version": "^1.0.0",
+      "minVersion": "1.0.0",
+      "breaking": false
+    }
+  ],
+
+  "eventBus": {
+    "type": "kafka",
+    "brokers": ["${KAFKA_BROKER_1}"],
+    "clientId": "student-management",
+    "groupId": "student-management-consumer-group",
+    "gatewayUrl": "${KAFKA_GATEWAY_URL}",
+    "topicPrefix": "app.student-management.",
+    "replicationFactor": 1,
+    "numPartitions": 6
+  },
+
+  "security": {
+    "authProvider": "pbc-auth",
+    "tokenStorage": "memory",
+    "sessionTimeout": 3600,
+    "publicRoutes": ["/login", "/health"]
+  },
+
+  "theme": {
+    "primaryColor": "#0d6efd",
+    "radius": "8px",
+    "fontFamily": "Inter, sans-serif",
+    "tokenFile": "shared/shared-ui/design-tokens/tokens.css"
+  },
+
+  "i18n": {
+    "defaultLocale": "vi",
+    "supportedLocales": ["vi", "en"]
+  },
+
+  "featureFlags": {
+    "enableNotifications": false,
+    "enableDarkMode": false
+  },
+
+  "appShell": {
+    "framework": "react",
+    "moduleFederation": true,
+    "uiStrategy": "module-federation",
+    "federationPlugin": "@originjs/vite-plugin-federation",
+    "basePath": "/",
+    "defaultRoute": "/dashboard"
+  }
+}

@@ -1,3 +1,6 @@
-// Bootstrap entry — export default ClassListSlot cho App Shell
-export { default } from './slots/ClassListSlot';
+// Bootstrap entry — export default cho App Shell (Module Federation)
+// App Shell load './bootstrap' để mount PBC vào main-content
+import StandaloneApp from './StandaloneApp';
+
+export default StandaloneApp;
 export * from './index';

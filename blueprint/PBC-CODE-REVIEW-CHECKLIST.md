@@ -4,220 +4,249 @@
 
 **Nguồn chuẩn duy nhất:** mọi tiêu chí căn theo [PBC-BLUEPRINT.md](./PBC-BLUEPRINT.md). Không lấy thêm spec/repo khác làm chuẩn trong vòng review này.
 
-### Quy trình bắt buộc cho AI (lặp tới khi pass)
+---
+
+## Quy trình bắt buộc cho AI (lặp tới khi pass)
 
 1. **Đọc** `pbc-contract.json` của PBC (đặc biệt `type`, `pbcId`, `capabilities`, `messaging`) và nếu cần tra cứu chi tiết thì đối chiếu **chỉ** `PBC-BLUEPRINT.md`.
-2. **Duyệt lần lượt** các mục §1 → §14: với mỗi mục, xác định mục con **Pass** / **Fail** / **N/A** (N/A phải ghi lý do một dòng, ví dụ `ui-only` không có `openapi.yaml`).
-3. **Ghi kết quả ngắn** (trong chat hoặc comment nội bộ): bảng hoặc list các § có Fail + file/dòng hoặc hành vi sai (ví dụ “subject NATS lệch contract”, “thiếu envelope `metadata`”).
-4. **Sửa code / contract / OpenAPI / AsyncAPI** tối thiểu để khắc phục từng Fail; ưu tiên: đồng bộ contract ↔ OpenAPI/AsyncAPI ↔ implementation, ranh giới PBC (không DB chéo), Flexible Payload, NATS đúng blueprint.
-5. **Chạy lại** bước 2–4 cho tới khi không còn Fail (hoặc chỉ còn N/A có lý do). Cuối cùng điền §15 (có thể ghi `Reviewer: AI`).
+2. **Duyệt lần lượt** các mục §1 → §15: với mỗi mục, xác định mục con **Pass** / **Fail** / **N/A** (N/A phải ghi lý do một dòng, ví dụ `ui-only` không có `openapi.yaml`).
+3. **Ghi kết quả ngắn** (trong chat hoặc comment nội bộ): bảng hoặc list các § có Fail + file/dòng hoặc hành vi sai (ví dụ "topic Kafka lệch contract", "thiếu envelope `metadata`").
+4. **Sửa code / contract / OpenAPI / AsyncAPI** tối thiểu để khắc phục từng Fail; ưu tiên: đồng bộ contract ↔ OpenAPI/AsyncAPI ↔ implementation, ranh giới PBC (không DB chéo), Flexible Payload, Kafka đúng blueprint.
+5. **Chạy lại** bước 2–4 cho tới khi không còn Fail (hoặc chỉ còn N/A có lý do). Cuối cùng điền §16 (có thể ghi `Reviewer: AI`).
 
 **Quy tắc sửa:** Chỉ thay đổi phạm vi cần thiết cho tiêu chí Fail; không refactor rộng không liên quan. Giữ marker `// AI-GENERATED` / `# AI-GENERATED` trên phần đã sửa nếu blueprint yêu cầu dấu vết AI.
 
-**Thứ tự gợi ý:** Làm §1–§2 trước (contract + `type`), sau §3 (kiến trúc/ranh giới), rồi §4–§14 theo phần PBC có (API/UI/DB/event).
+**Thứ tự gợi ý:** Làm §1–§2 trước (contract + `type`), sau §3 (kiến trúc/ranh giới), rồi §4–§15 theo phần PBC có (API/UI/DB/event).
 
 ---
 
-## 1. `pbc-contract.json` & metadata
+## §1. `pbc-contract.json` & metadata
 
 - [ ] Có `pbc-contract.json` ở gốc PBC; JSON hợp lệ (**không** có comment `//` trong file thật).
-- [ ] Có đủ field theo template blueprint (ít nhất: `pbcId`, `version`, `name`, `description`, `category`, `domain`, `type`, `technologies`, `capabilities`, `i18n`… tùy PBC).
+- [ ] Có đủ field bắt buộc: `pbcId`, `version`, `name`, `description`, `category`, `domain`, `type`, `technologies`, `capabilities`, `i18n`.
 - [ ] `type` là một trong: `full` | `ui-only` | `api-only` | `event-only`.
-- [ ] Nếu `type` do AI suy luận (user không chỉ định): có `properties.inferredTypeReason` **hoặc** một dòng lý do ở cuối `description`.
-- [ ] `pbcId` **kebab-case**, khớp quy ước thư mục (`pbcs/<name>/` → `pbcId` không nhân đôi tiền tố `pbc-`).
-- [ ] `capabilities.ui.slots` (và `slots` top-level nếu có) **không lệch** nhau; chỉ nên một nguồn sự thật.
-- [ ] `capabilities.api.supportsMetadata` = true khi API tuân Flexible Payload.
-- [ ] `properties.tenantResolution` (hoặc tương đương) mô tả cách resolve tenant nếu có đa tenant.
-- [ ] `properties.dockerLayout` ghi rõ vị trí Dockerfile/compose nếu layout không mặc định `docker/`.
-- [ ] `messaging`: broker mặc định **NATS**; nếu không phải NATS thì có lý do trong contract.
+- [ ] Nếu `type` do AI suy luận: có `properties.inferredTypeReason` một dòng giải thích lý do.
+- [ ] `pbcId` **kebab-case**, không nhân đôi tiền tố `pbc-` (thư mục `pbc-user-management` → `pbcId: "user-management"`).
+- [ ] `capabilities.ui.slots` và `slots` top-level (nếu có) **không lệch** nhau — chỉ duy trì một nguồn sự thật.
+- [ ] `capabilities.api.supportsMetadata: true` khi API tuân Flexible Payload.
+- [ ] `messaging.broker: "kafka"` (mặc định); có `topicPrefix`, `groupId`, `notes` khi cần.
+- [ ] `properties.tenantResolution` mô tả cách resolve tenant (jwt-claim / header / subdomain).
+- [ ] `properties.requiredEnvVars` liệt kê đủ biến môi trường bắt buộc, khớp `api/.env.example`.
+- [ ] `properties.dockerLayout` ghi rõ vị trí Dockerfile/compose nếu không dùng layout mặc định `docker/`.
+- [ ] `properties.apiAuthNotes` mô tả route nào public, route nào cần JWT, route nào cần role cụ thể.
 
 ---
 
-## 2. Ràng buộc theo `type` (cấu trúc repo)
+## §2. Ràng buộc theo `type` (cấu trúc repo)
 
 | Kiểm tra | full | ui-only | api-only | event-only |
 |----------|:----:|:-------:|:--------:|:----------:|
 | [ ] Có `ui/` khi và chỉ khi type cần UI | ✓ | ✓ | ✗ | ✗ |
-| [ ] **Không** có `api/` (backend PBC) khi `ui-only` | | ✓ | | |
-| [ ] Có `api/` hoặc worker tương đương khi `full` / `api-only` / `event-only` | ✓ | | ✓ | ✓ (worker) |
+| [ ] **Không** có `api/` khi `ui-only` | | ✓ | | |
+| [ ] Có `api/` hoặc `worker/` khi `full` / `api-only` / `event-only` | ✓ | | ✓ | ✓ |
 | [ ] Có `db/` chỉ khi thực sự có persistence | tùy | ✗ | tùy | tùy |
-| [ ] `openapi.yaml`: có khi có HTTP nghiệp vụ / health đã cam kết; **không** có cho `ui-only` (trừ exception đã ghi contract) | ✓ | ✗* | ✓ | chỉ health nếu có |
-| [ ] `asyncapi.yaml`: có khi có `businessEvents` hoặc `uiInteraction` qua bus | nếu có event | nếu UI/event | nếu có event | ✓ |
-
-\*Theo blueprint: `ui-only` không có OpenAPI của riêng PBC.
+| [ ] `openapi.yaml` có khi có HTTP nghiệp vụ; **không** có cho `ui-only` | ✓ | ✗ | ✓ | chỉ health |
+| [ ] `asyncapi.yaml` có khi có `businessEvents` hoặc `uiInteraction` qua Kafka | nếu có | nếu có | nếu có | ✓ |
+| [ ] **Không** có `src/` ở root PBC cùng cấp `api/` / `ui/` (quy tắc 14) | ✓ | ✓ | ✓ | ✓ |
 
 ---
 
-## 3. Kiến trúc & ranh giới hệ thống (theo blueprint)
+## §3. Kiến trúc & ranh giới hệ thống
 
-**Mục tiêu:** Xác minh PBC đúng **tinh thần blueprint**: ranh giới nghiệp vụ, không JOIN / không truy cập DB PBC khác, giao tiếp chỉ qua **Event Bus (NATS)** hoặc **HTTP theo OpenAPI đã công bố** (quy tắc 7); cấu trúc tầng và hợp đồng khớp các mục **CẤU TRÚC THƯ MỤC**, **EVENT BUS: NATS**, **Bảo mật & đa tenant**.
+**Mục tiêu:** PBC đúng tinh thần blueprint — ranh giới nghiệp vụ rõ, giao tiếp chỉ qua **Kafka** hoặc **HTTP theo OpenAPI đã công bố**.
 
 ### 3.1. Ranh giới PBC & dữ liệu sở hữu
 
-- [ ] **Phạm vi nghiệp vụ:** Một `pbcId` gắn với một miền/aggregate chính rõ ràng; không gom nhiều bounded context không liên quan vào cùng PBC chỉ vì “tiện code”.
-- [ ] **Sở hữu dữ liệu:** Bảng/schema trong `db/` chỉ phục vụ nghiệp vụ PBC này; không dùng DB chung kiểu “mọi PBC đọc cùng bảng core” thay cho gọi API/event.
-- [ ] **Không vượt viền:** Không JOIN giữa các PBC; không truy cập schema DB ngoài viền PBC. Chỉ giao tiếp qua **NATS** (theo AsyncAPI/contract) hoặc **HTTP** theo OpenAPI **đã công bố** (BFF / PBC khác) — đúng quy tắc 7 blueprint.
+- [ ] Một `pbcId` gắn với một miền/aggregate chính; không gom nhiều bounded context không liên quan.
+- [ ] Bảng/schema trong `db/` chỉ phục vụ nghiệp vụ PBC này — không dùng DB chung với PBC khác.
+- [ ] Không JOIN giữa các PBC; không truy cập schema DB ngoài viền PBC (quy tắc 7).
 
-### 3.2. Cấu trúc tầng (theo mục cấu trúc thư mục blueprint)
+### 3.2. Cấu trúc tầng `api/`
 
-- [ ] **Tách tầng:** Thư mục `api/` (khi có) phản ánh phân tách blueprint: `interfaces`/controller (mỏng) → `core` (domain/service) → `infrastructure` (persistence, events NATS, hooks) — không gom toàn bộ nghiệp vụ vào một lớp controller duy nhất.
-- [ ] **UI:** Slot-based + event-driven (quy tắc 4): không hard-code gọi DB PBC khác; dữ liệu qua HTTP tới BFF/PBC khác (theo OpenAPI họ công bố), NATS (`uiInteraction` / `businessEvents`), hoặc props từ host — khai báo trong `pbc-contract.json` (ví dụ `capabilities.ui.dataSources` hoặc `properties.uiDataBinding` khi `ui-only`).
+- [ ] Phân tách đúng: `interfaces/` (controller mỏng) → `core/` (domain/service) → `infrastructure/` (persistence, events, hooks).
+- [ ] `infrastructure/events/` có Kafka producer/consumer (kafkajs).
+- [ ] `infrastructure/hooks/before/` và `hooks/after/` có đủ (validate, enforce-tenant, audit-log, invalidate-cache).
+- [ ] `infrastructure/persistence/` có repository implementation.
+- [ ] `infrastructure/webhook/` có webhook.service.ts.
+- [ ] `config/app.config.ts` có config loader (`registerAs` cho app, kafka, tenant).
+- [ ] `interfaces/metadata.helper.ts` có `buildMetadata` helper.
 
-### 3.3. Contract-first (design-first trong blueprint)
+### 3.3. Contract-first
 
-- [ ] **Thứ tự:** `pbc-contract.json` sinh trước; OpenAPI/AsyncAPI đồng bộ contract; code không lệch path/subject/slot đã công bố (mục “Quy tắc chung cho openapi và asyncapi”).
-- [ ] **Breaking change:** Tăng version path API (`/v2/...`) hoặc `schemaVersion` / subject `v2` trên NATS — ghi trong contract và file contract API/event, không chỉ sửa code (mục “Sự kiện: idempotency & phiên bản”).
+- [ ] `pbc-contract.json` sinh trước; OpenAPI/AsyncAPI đồng bộ contract — code không lệch path/topic/slot đã công bố.
+- [ ] Breaking change: tăng version path API (`/v2/...`) hoặc topic version (`v2`) — ghi trong contract và AsyncAPI.
 
-### 3.4. HTTP (OpenAPI) vs NATS (AsyncAPI)
+### 3.4. Kafka (AsyncAPI)
 
-- [ ] **NATS mặc định:** Subject `pbc.<pbcId>...`, queue group / JetStream / durable ghi trong AsyncAPI và `pbc-contract.json` (`messaging`) khi áp dụng (mục EVENT BUS & QUY TẮC ĐẶT TÊN NATS).
-- [ ] **Không Kafka mặc định:** Chỉ khi contract ghi đè có lý do kiến trúc (quy tắc 11).
-- [ ] **Core vs JetStream:** Chọn đúng mô hình (fire-and-forget vs persist/replay) và mô tả trong contract/AsyncAPI.
+- [ ] Topic naming: `pbc.<pbcId>.<domain>.<verb>`, khớp `capabilities.businessEvents`.
+- [ ] Consumer groupId khai trong AsyncAPI và `messaging.groupId`.
+- [ ] Partition key (tenantId / aggregateId) ghi trong `messaging.notes` khi cần ordering.
 
-### 3.5. Bảo mật & đa tenant (mục blueprint tương ứng)
+### 3.5. Bảo mật & đa tenant
 
-- [ ] **Tenant resolution:** Ghi trong `properties.tenantResolution` (JWT claim, `X-Tenant-Id`, subdomain…); schema-per-tenant hoặc RLS ghi trong contract/migration khi dùng RLS.
-- [ ] **`attributes`:** JSON mở rộng + JSON Schema trong `db/schemas/` khi blueprint yêu cầu; phân loại dữ liệu có thể ghi `properties.dataClassification`.
-- [ ] **permissions:** Chuỗi `<resource>:<action>` trong contract; kiểm tra runtime có kiểm soát tương ứng (không chỉ khai báo).
-
-### 3.6. UI trong nền tảng composable (blueprint)
-
-- [ ] **Slot + design tokens + event-driven** (quy tắc 4); đồng bộ `capabilities.ui.slots` / `manifest.json` (mục `manifest.json` & design tokens).
-- [ ] **i18n:** Theo `pbc-contract.i18n` và vị trí file locale blueprint (`ui/locales/` hoặc quy ước tương đương trong cùng PBC).
-
-### 3.7. Docker, health, observability (blueprint)
-
-- [ ] **Docker:** Multi-stage cho UI và API khi có UI/API; vị trí file thống nhất với `properties.dockerLayout` và mục Docker blueprint.
-- [ ] **Compose local:** Có NATS (và JetStream nếu dùng) khi PBC có async.
-- [ ] **API bootstrap & resilience:** Khớp mục *API bootstrap & chạy độc lập* và *Sức bền vận hành & health* (quy tắc 13); chi tiết kỹ thuật kiểm thêm §7, §13.
-- [ ] **event-only:** HTTP tối thiểu chỉ health/readiness nếu platform yêu cầu — đã ghi trong contract và OpenAPI chỉ các path đó (mô tả loại `event-only`).
-
-### 3.8. Sự kiện: idempotency & phiên bản
-
-- [ ] Payload/message có thể mang `eventId`, `schemaVersion`, `occurredAt`; consumer idempotent theo `eventId` hoặc `Nats-Msg-Id` (JetStream) khi blueprint yêu cầu độ tin cậy đó.
+- [ ] Tenant resolution khớp `properties.tenantResolution`; schema-per-tenant hoặc RLS ghi trong contract/migration.
+- [ ] Cột `attributes JSON` có JSON Schema validate trong `db/schemas/`.
+- [ ] Permissions dạng `<resource>:<action>` trong contract; có kiểm soát runtime tương ứng.
 
 ---
 
-## 4. Đặt tên (cross-cutting)
+## §4. Đặt tên (cross-cutting)
 
-- [ ] **kebab-case:** `pbcId`, segment path resource, segment subject NATS, tên file `pbc-contract.json` / `openapi.yaml` / `asyncapi.yaml`.
-- [ ] **HTTP:** base path versioned `/v1/...`; collection danh từ số nhiều; path param **camelCase** trong OpenAPI; query **camelCase**.
-- [ ] **OpenAPI `operationId`:** camelCase, dạng gợi ý `listUsers`, `getUserById`, …
-- [ ] **NATS subject:** `pbc.<pbcId>.<domain>.<verb>` (chữ thường, segment `.`), khớp AsyncAPI `channels`.
-- [ ] **Queue group:** `q.<pbcId>.<handler>` khi dùng competing consumers.
-- [ ] **JetStream** (nếu có): stream / durable theo quy ước blueprint; ghi trong `asyncapi.yaml` và/hoặc `messaging.notes`.
-- [ ] **Hook (contract):** camelCase, động từ đầu; file triển khai nhất quán trong PBC.
-- [ ] **DB:** bảng/cột **snake_case**; có cột mở rộng `attributes` (JSON) khi blueprint yêu cầu.
-- [ ] **permissions:** `<resource>:<action>`, chữ thường, resource nhiều từ dùng kebab.
-- [ ] **Docker/K8s:** image/service gắn `pbcId`, service name kebab-case.
+- [ ] `pbcId` **kebab-case**; segment Kafka topic **kebab-case**; segment URL path **kebab-case**.
+- [ ] HTTP: base path versioned `/v1/...`; collection danh từ số nhiều; path param **camelCase**; query **camelCase**.
+- [ ] OpenAPI `operationId`: **camelCase**, dạng `listUsers`, `getUserById`, `createUser`.
+- [ ] Kafka topic: `pbc.<pbcId>.<domain>.<verb>` (chữ thường), khớp AsyncAPI `channels`.
+- [ ] Consumer group: `<appId>-<pbcId>-<purpose>`, ghi trong `asyncapi.yaml` và `messaging.notes`.
+- [ ] Hook trong contract: **camelCase**, động từ đầu (`validatePayload`, `enforceTenant`, `auditLog`).
+- [ ] DB: bảng/cột **snake_case**; cột mở rộng `attributes` (JSON).
+- [ ] Permissions: `<resource>:<action>`, chữ thường, resource nhiều từ dùng kebab.
+- [ ] Docker/K8s: image/service gắn `pbcId`, service name kebab-case.
 
 ---
 
-## 5. `openapi.yaml` (khi có)
+## §5. `openapi.yaml` (khi có)
 
-- [ ] OpenAPI **3.1**; `info` / `version` đồng bộ contract.
+- [ ] OpenAPI **3.1**; `info.version` đồng bộ `pbc-contract.json`.
 - [ ] Có `servers` (ít nhất một).
-- [ ] Mọi request/response body nghiệp vụ dùng envelope **Flexible Payload** `data` + `metadata`.
-- [ ] `metadata` có/khớp các key chuẩn gợi ý: `timestamp`, `requestId`, `correlationId`, `traceId`, `tenantId` (theo blueprint).
-- [ ] Header platform: `X-Tenant-Id`, `X-Correlation-Id`, `X-Request-Id` thống nhất với `metadata` / code.
-- [ ] Có schema/components, error responses, **securitySchemes** nếu JWT; có ví dụ (examples) cho request/response chính.
-- [ ] Mọi operation có `security` trong OpenAPI đều có **guard/middleware tương ứng** trong code; route **public** (health, …) khớp mục *Bảo mật API & cấu hình nhạy cảm* (quy tắc 13).
-- [ ] **Không** để cả khối controller nghiệp vụ “mở toang” (không guard) trong khi OpenAPI khai JWT — trừ khi có `apiAuthNotes` + OpenAPI phản ánh API công khai có chủ đích.
+- [ ] Mọi request/response body nghiệp vụ dùng envelope **Flexible Payload** `{ data, metadata }`.
+- [ ] `metadata` có đủ key chuẩn: `timestamp`, `requestId`, `correlationId`, `traceId`, `tenantId`.
+- [ ] Header platform: `X-Tenant-Id`, `X-Correlation-Id`, `X-Request-Id` thống nhất với `metadata`.
+- [ ] Có `securitySchemes` (JWT) nếu API có auth; có error responses chuẩn (400, 401, 403, 404, 500).
+- [ ] Có examples cho request/response chính.
+- [ ] Mọi operation có `security` đều có **guard/middleware tương ứng** trong code.
+- [ ] Route public (health, login) được tách biệt rõ ràng, khớp `properties.apiAuthNotes`.
 
 ---
 
-## 6. `asyncapi.yaml` & NATS (khi có)
+## §6. `asyncapi.yaml` & Kafka (khi có)
 
 - [ ] AsyncAPI **2.6**; `info` đồng bộ contract.
-- [ ] Server NATS (ví dụ `nats://...`); bindings phù hợp core NATS hoặc JetStream.
-- [ ] Mỗi channel = một **subject** khớp `capabilities.businessEvents` / `uiInteraction`.
-- [ ] Payload: JSON Schema đủ chi tiết; có headers (tenant, correlation, trace, idempotency nếu áp dụng); có ít nhất một example.
-- [ ] Producer/consumer ghi rõ; queue group / durable / stream nếu dùng.
-- [ ] **Không** mặc định Kafka trừ khi contract ghi đè có lý do.
-- [ ] (Nâng cao — **Pass có điều kiện** nếu chưa làm) Client publish/consume có xử lý lỗi/retry hợp lý hoặc ghi nợ production; circuit breaker khi gọi phụ thuộc hay broker không ổn — theo blueprint mục *Khả năng chịu lỗi khi messaging…*.
+- [ ] Server Kafka (`url: kafka:9092`, protocol `kafka`).
+- [ ] Mỗi channel = một Kafka topic, khớp `capabilities.businessEvents` / `uiInteraction`.
+- [ ] Payload: JSON Schema đủ chi tiết; có headers (`X-Tenant-Id`, `X-Correlation-Id`, `X-Message-Id`, `traceparent`); có ít nhất một example.
+- [ ] Producer/consumer ghi rõ; `groupId` / partition key khi dùng.
+- [ ] Bindings Kafka: topic, partitions, groupId khi áp dụng.
 
 ---
 
-## 7. Triển khai API (runtime)
+## §7. Triển khai API (runtime)
 
-*(Các ví dụ NestJS dưới đây chỉ là **mẫu** khi stack là Node/Nest; stack khác kiểm **hành vi tương đương** theo blueprint quy tắc 13.)*
+*(Ví dụ NestJS chỉ là mẫu — stack khác kiểm hành vi tương đương theo quy tắc 13.)*
 
-- [ ] PBC **không** chỉ là “Nest module thư viện” (chỉ `modules/...` trong app chung): với `full` / `api-only` phải là **service triển khai được** — có bootstrap + cách chạy/build riêng theo blueprint mục *PBC có api/ là dịch vụ…*; thiếu entry root + Docker/pipeline (khi tổ chức bắt buộc) → **Fail**.
-- [ ] Controller/handler nhận-trả đúng envelope `data` + `metadata` (khớp OpenAPI).
-- [ ] Hook pattern: before (validate/transform/tenant…) / after (audit/enrich/emit…) nếu contract khai báo.
-- [ ] **Không** JOIN hoặc truy cập DB/schema của PBC khác; chỉ HTTP/OpenAPI đã công bố hoặc NATS theo contract.
-- [ ] **Bootstrap chạy độc lập** (quy tắc 13): có entry rõ (`main.ts` + `app.module.ts` hoặc tương đương stack); `npm run start` / Docker CMD chạy được API không phụ thuộc host không tài liệu.
-- [ ] **Health / readiness:** probe DB (nếu có) và **NATS** (nếu có messaging); không 200 khi dependency bắt buộc down — ví dụ Nest: `@nestjs/terminus` + `HealthController` (hoặc tương đương).
-- [ ] **JWT / auth:** Guard (hoặc middleware) trên controller nghiệp vụ khớp OpenAPI; health/public route tách biệt có chủ đích.
-- [ ] **Secrets & broker:** URL NATS, DB, JWT secret… chỉ từ **env** / secret store; có **`api/.env.example`** (hoặc root PBC); không hard-code trong source. Broker mặc định **NATS** (quy tắc 11); `properties.requiredEnvVars` khớp `.env.example` nếu dùng.
+- [ ] PBC là **service triển khai được** — có `main.ts` + `app.module.ts` (hoặc tương đương), không chỉ là Nest module thư viện (quy tắc 14).
+- [ ] Controller/handler nhận-trả đúng envelope `{ data, metadata }` (khớp OpenAPI).
+- [ ] Hook pattern: before (validate/transform/tenant) / after (audit/enrich/emit) khi contract khai báo.
+- [ ] Không JOIN hoặc truy cập DB/schema của PBC khác; chỉ HTTP/OpenAPI đã công bố hoặc Kafka theo contract.
+- [ ] `npm run start` / Docker CMD chạy được API độc lập, không phụ thuộc host không tài liệu.
+- [ ] **Health / readiness:** probe DB (nếu có) và Kafka (nếu có messaging); không trả 200 khi dependency bắt buộc down.
+- [ ] **JWT guard** trên controller nghiệp vụ khớp OpenAPI; health/public route tách biệt.
+- [ ] URL Kafka, DB, JWT secret chỉ từ **env** — không hard-code trong source.
+- [ ] Có `api/.env.example` liệt kê đủ biến, khớp `properties.requiredEnvVars`.
 
 ---
 
-## 8. UI (khi có `ui/`)
+## §8. `EventPublisher` & Kafka client (quy tắc 22)
 
-- [ ] Kiến trúc **slot-based**; slot trong code khớp `capabilities.ui.slots` / `manifest.json` (nếu có).
+- [ ] `onModuleInit` wrap `producer.connect()` trong try/catch — log warning thay vì throw khi Kafka không available.
+- [ ] Retry config: `retries: 3, initialRetryTime: 300, factor: 2`.
+- [ ] `publish()` catch lỗi và log error thay vì throw — HTTP response không bị block bởi event publish failure.
+- [ ] Consumer graceful shutdown: disconnect khi app stop.
+- [ ] Idempotency: message có `eventId` / `X-Message-Id`; consumer xử lý idempotent khi cần.
+- [ ] `schemaVersion` trong payload; breaking change tăng version topic (`v2`).
+
+---
+
+## §9. UI (khi có `ui/`)
+
+- [ ] Kiến trúc **slot-based**; slot trong code khớp `capabilities.ui.slots` / `manifest.json`.
 - [ ] File slot: **PascalCase** + hậu tố `Slot` (ví dụ `MenuSlot.tsx`).
-- [ ] **Design tokens** (`--pbc-...` hoặc `--pbc-<pbcId>-...`) được dùng thay vì hard-code màu/spacing lẻ tẻ.
-- [ ] **Event-driven:** emit/listen theo contract (`uiInteraction` / subject NATS); không hard-code kết nối DB PBC khác.
-- [ ] i18n: locale theo `pbc-contract.i18n`; file locale đặt đúng quy ước (`ui/locales/` hoặc cấu trúc tương đương đã thống nhất trong PBC).
-- [ ] `manifest.json` (nếu có): `pbcId`, version, slots, federation/exposed module, tokens, mapping event ↔ bus (nếu cần).
+- [ ] Slot là **thin wrapper** — không gọi `axios`/`fetch` thô trực tiếp (quy tắc 16); mọi HTTP call qua `services/pbc-api.ts`.
+- [ ] `pbc-api.ts` dùng **named exports** — không dùng namespace object `export const xxxApi = { ... }` (quy tắc 17).
+- [ ] `pbc-api.ts` có chữ ký kiểu rõ ràng: `async function request<TResponse, TBody = unknown>(...): Promise<TResponse>` — không để implicit `any` (quy tắc 15).
+- [ ] **Design tokens** (`--pbc-...`) được dùng thay vì hard-code màu/spacing.
+- [ ] **Event-driven:** emit/listen theo contract (`uiInteraction` / Kafka topic qua kafka-gateway); không hard-code gọi DB PBC khác.
+- [ ] i18n: file locale tại `ui/locales/<locale>.json`, khớp `pbc-contract.i18n`.
+- [ ] `manifest.json` có: `pbcId`, version, slots, scope, module, requiredEvents, design-tokens.
+- [ ] `ui/.env.example` liệt kê đủ biến `VITE_*`; không hard-code URL API hay tenant ID trong source.
 
 ---
 
-## 9. Database (khi có `db/`)
+## §10. Vite config & Module Federation (quy tắc 18, 19, 23)
 
-- [ ] **Schema per tenant** (hoặc RLS + mô tả trong contract/migration nếu platform chọn RLS).
-- [ ] Migration / entity có cột **`attributes` JSON** khi blueprint yêu cầu mở rộng.
-- [ ] Có JSON Schema cho `attributes` trong `db/schemas/` khi blueprint yêu cầu validate.
-- [ ] `tenant-init.sql` hoặc tương đương khớp quy ước đặt tên schema tenant.
-
----
-
-## 10. `extensions/` vs `api/.../hooks`
-
-- [ ] Hook **chạy runtime** nằm dưới `api/.../hooks` (hoặc tương đương).
-- [ ] `extensions/hooks` chỉ template/tài liệu — không giả định tự load trừ khi README của PBC ghi rõ có loader (theo blueprint mục phân biệt `extensions/` và `api/.../hooks`).
-
----
-
-## 11. Docker & vận hành local
-
-- [ ] Có **multi-stage** Dockerfile cho UI và API khi PBC có UI/API (đúng `properties.dockerLayout` trong contract).
-- [ ] Compose dev (nếu có) gồm **NATS** (và JetStream nếu dùng) khi PBC có async.
+- [ ] `vite.config.ts`: `shared` là **object** với `singleton: true` và `requiredVersion` — không phải array (quy tắc 18).
+  ```typescript
+  shared: {
+    react: { singleton: true, requiredVersion: "^18.0.0" },
+    "react-dom": { singleton: true, requiredVersion: "^18.0.0" },
+  }
+  ```
+- [ ] `package.json` dùng **pinned versions** (ví dụ `"react": "18.3.1"`) — không dùng range `^` (quy tắc 19).
+- [ ] `bootstrap.ts` **không import React** — chỉ re-export `StandaloneApp` + `index.ts` (quy tắc 23).
+- [ ] `StandaloneApp.tsx` **không** khai trong `exposes` của `vite.config.ts`.
+- [ ] `src/index.ts` chỉ export các slot/component cần expose cho App Shell.
+- [ ] `name` trong federation config khớp `scope` trong `pbc-registry.json` (dạng `pbc_<pbcId_snake>`).
 
 ---
 
-## 12. Chất lượng code & dấu vết AI
+## §11. Database (khi có `db/`)
 
-- [ ] File/code do AI sinh có marker `// AI-GENERATED` hoặc `# AI-GENERATED` theo quy tắc blueprint (áp dụng thống nhất cho phần generated).
-
----
-
-## 13. Observability & sự kiện
-
-- [ ] Log/metrics có thể bám `requestId` / `correlationId` / `traceId` khớp metadata & header NATS.
-- [ ] **Logging có cấu trúc** (JSON/key-value), không chỉ `console.log` production — ví dụ Node: **Winston** hoặc **Pino** (một chuẩn tổ chức; blueprint mục *Quan sát*).
-- [ ] **`package.json` (Nest/Node):** Có dependency thực tế cho những gì code dùng (ví dụ `@nestjs/terminus` nếu dùng Terminus, `winston`/`pino` nếu dùng cho log) — không “code gọi thư viện” mà không khai báo trong PBC.
-- [ ] **Health:** Có endpoint live/ready (tên path khớp OpenAPI + probe); **Fail** nếu không có health khi PBC có HTTP theo quy tắc 13.
-- [ ] **`/metrics`:** **N/A có lý do** nếu platform chưa chuẩn; nếu tổ chức bắt buộc Prometheus thì phải có (blueprint mục *Quan sát*).
-- [ ] Message (nếu có): gợi ý `eventId`, `schemaVersion`, `occurredAt`; consumer xử lý **idempotent** khi có yêu cầu (hoặc `Nats-Msg-Id` với JetStream).
+- [ ] **Schema per tenant** (hoặc RLS + mô tả trong contract/migration).
+- [ ] Migration / entity có cột `attributes JSON` khi blueprint yêu cầu mở rộng.
+- [ ] JSON Schema cho `attributes` trong `db/schemas/`.
+- [ ] `tenant-init.sql` khớp quy ước đặt tên schema tenant.
+- [ ] Seed scripts không hard-code `tenant_id` — dùng `current_setting('app.tenant_id')` hoặc psql param.
+- [ ] Bcrypt hash trong seed đã được verify (`node -e "require('bcrypt').compare(...)"` → `true`).
+- [ ] Seed dev/local dùng plain SQL (không DO block) để `docker-entrypoint-initdb.d` tự chạy được.
 
 ---
 
-## 14. Đồng bộ chéo (bắt buộc trước khi merge)
+## §12. Docker & vận hành local
 
-- [ ] Cùng `pbcId` trên: contract, OpenAPI, AsyncAPI, subject NATS trong code, path `/v1/...`, Docker image name (nếu có).
-- [ ] Mọi endpoint trong OpenAPI có implementation (hoặc được ghi rõ stub/TODO có kế hoạch).
-- [ ] Mọi channel/subject trong AsyncAPI có publish/subscribe tương ứng trong code (hoặc tài liệu rõ ràng).
+- [ ] Có **multi-stage** Dockerfile cho UI và API (đúng `properties.dockerLayout`).
+- [ ] Compose dev gồm **Kafka** (và kafka-gateway nếu có UI) khi PBC có async.
+- [ ] `depends_on` DB/broker dùng `condition: service_healthy` — không chỉ `service_started`.
+- [ ] DB có `healthcheck` thực sự (ví dụ `pg_isready`).
+- [ ] Dockerfile dùng `npm ci` chỉ khi có `package-lock.json`; nếu không có thì dùng `npm install`.
+- [ ] Nginx port: khi UI serve trên port khác 80, có `nginx.conf` riêng với `listen <port>;` và SPA fallback `try_files`.
 
 ---
 
-## 15. Kết luận review
+## §13. `extensions/` vs `api/.../hooks`
+
+- [ ] Hook **chạy runtime** nằm dưới `api/infrastructure/hooks/` — không đặt trong `extensions/`.
+- [ ] `extensions/hooks/` chỉ template/tài liệu — không giả định tự load trừ khi README ghi rõ có loader.
+- [ ] Mọi endpoint khai trong `openapi.yaml` có controller tương ứng được đăng ký trong module (không để route 404 ngầm).
+
+---
+
+## §14. Observability & chất lượng code
+
+- [ ] Log có `requestId` / `correlationId` / `traceId` khớp metadata & header Kafka.
+- [ ] **Logging có cấu trúc** (JSON/key-value) — không chỉ `console.log` cho môi trường production.
+- [ ] `package.json` khai báo dependency thực tế cho những gì code dùng (`@nestjs/terminus`, `winston`/`pino`…).
+- [ ] Có endpoint **health** (và **readiness** nếu K8s); path khớp OpenAPI + Docker/K8s probe.
+- [ ] `/metrics` (Prometheus): ghi N/A có lý do nếu platform chưa chuẩn; bắt buộc nếu tổ chức yêu cầu.
+- [ ] File/code do AI sinh có marker `// AI-GENERATED` hoặc `# AI-GENERATED`.
+
+---
+
+## §15. Đồng bộ chéo (bắt buộc trước khi merge)
+
+- [ ] Cùng `pbcId` trên: contract, OpenAPI, AsyncAPI, Kafka topic trong code, path `/v1/...`, Docker image name.
+- [ ] Mọi endpoint trong OpenAPI có implementation (hoặc stub/TODO có kế hoạch rõ ràng).
+- [ ] Mọi channel/topic trong AsyncAPI có publish/subscribe tương ứng trong code.
+- [ ] `manifest.json.scope` khớp `pbc-registry.json` scope; `manifest.json.module` khớp exposed module.
+- [ ] Topic trong `capabilities.uiInteraction`/`businessEvents` khớp `asyncapi.yaml`.
+- [ ] `pbc-contract.json.pbcId` khớp `app-contract.json.includedPBCs[*].pbcId` (nếu đã tích hợp vào App).
+
+---
+
+## §16. Kết luận review
 
 | Mục | Kết quả |
 |-----|---------|
 | Reviewer (người hoặc AI) | |
-| Ngày / phiên bản | |
+| Ngày / phiên bản PBC-BLUEPRINT | |
 | `pbcId` / đường dẫn PBC trong repo | |
 | **Pass / Pass có điều kiện / Fail** (sau vòng sửa) | |
 | Các § đã Fail trước khi sửa (tóm tắt) | |
@@ -225,4 +254,4 @@
 
 ---
 
-*AI: dùng file này như **definition of done** sau generate — không kết thúc phiên nếu §15 vẫn Fail mà chưa sửa hoặc chưa ghi rõ lý do ngoại lệ theo blueprint.*
+*AI: dùng file này như **definition of done** sau generate — không kết thúc phiên nếu §16 vẫn Fail mà chưa sửa hoặc chưa ghi rõ lý do ngoại lệ theo blueprint.*

@@ -1,34 +1,40 @@
 // AI-GENERATED
-import React from 'react';
-import { Form, Input, InputNumber, Select, Button, message } from 'antd';
-import axios from 'axios';
+// Slot: class-form — thin wrapper, dùng khi App Shell mount form độc lập
+import React, { useState } from 'react';
+import { message } from 'antd';
+import ClassForm from '../components/business/ClassForm';
+import { createClass } from '../services/pbc-api';
+import { emitClassEvent } from '../hooks/event-handlers';
+import type { CreateClassData } from '../types';
 
-const BASE = import.meta.env.VITE_CLASS_MGMT_URL || 'http://localhost:3003';
-const token = () => localStorage.getItem('accessToken');
-const tenantId = () => localStorage.getItem('tenantId') || 'dev-tenant';
+interface ClassFormSlotProps {
+  onSuccess?: () => void;
+}
 
-export default function ClassFormSlot({ onSuccess }: { onSuccess?: () => void }) {
-  const [form] = Form.useForm();
+const ClassFormSlot: React.FC<ClassFormSlotProps> = ({ onSuccess }) => {
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (data: CreateClassData) => {
+    setLoading(true);
     try {
-      await axios.post(`${BASE}/v1/classes`, { data: values, metadata: { tenantId: tenantId() } }, { headers: { Authorization: `Bearer ${token()}` } });
+      await createClass(data);
       message.success('Tạo lớp học thành công');
-      form.resetFields();
+      emitClassEvent('class.created', data as Record<string, unknown>);
       onSuccess?.();
-    } catch (err: any) { message.error(err?.response?.data?.message || 'Có lỗi xảy ra'); }
+    } catch (err) {
+      message.error((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ maxWidth: 500 }}>
-      <Form.Item name="classCode" label="Mã lớp" rules={[{ required: true }]}><Input /></Form.Item>
-      <Form.Item name="className" label="Tên lớp" rules={[{ required: true }]}><Input /></Form.Item>
-      <Form.Item name="academicYear" label="Năm học" rules={[{ required: true }]}><Input placeholder="2024-2025" /></Form.Item>
-      <Form.Item name="maxStudents" label="Sĩ số tối đa" initialValue={30}><InputNumber min={1} max={100} style={{ width: '100%' }} /></Form.Item>
-      <Form.Item name="status" label="Trạng thái" initialValue="PLANNED">
-        <Select options={[{ value: 'PLANNED', label: 'Kế hoạch' }, { value: 'ACTIVE', label: 'Đang học' }, { value: 'COMPLETED', label: 'Hoàn thành' }]} />
-      </Form.Item>
-      <Form.Item><Button type="primary" htmlType="submit">Tạo lớp học</Button></Form.Item>
-    </Form>
+    <ClassForm
+      loading={loading}
+      onSubmit={handleSubmit}
+      onCancel={() => onSuccess?.()}
+    />
   );
-}
+};
+
+export default ClassFormSlot;

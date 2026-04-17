@@ -1,39 +1,52 @@
-// AI-GENERATED
-export type StudentStatus = 'ACTIVE' | 'SUSPENDED' | 'GRADUATED' | 'DROPPED_OUT';
-export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
+// Types khớp với openapi.yaml — nguồn sự thật là openapi.yaml
 
-export interface Student {
+export type StudentStatus = 'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'SUSPENDED';
+
+export interface StudentDto {
   id: string;
   studentCode: string;
   fullName: string;
-  dateOfBirth?: string;
-  gender?: Gender;
-  address?: string;
+  email: string;
   phone?: string;
-  email?: string;
+  dateOfBirth?: string;
   status: StudentStatus;
   classId?: string;
-  enrollmentDate?: string;
-  graduationDate?: string;
-  attributes?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface Pagination {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages?: number;
+export interface ApiMetadata {
+  timestamp: string;
+  requestId: string;
+  correlationId: string;
+  tenantId: string;
 }
 
-export interface FlexiblePayload<T = unknown> {
+export interface ApiResponse<T> {
   data: T;
-  metadata: {
-    timestamp: string;
-    requestId: string;
-    correlationId?: string;
-    tenantId: string;
-    error?: { code: string; message: string };
-  };
+  metadata: ApiMetadata;
+}
+
+export interface PaginatedData<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface CreateStudentData {
+  studentCode: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  dateOfBirth?: string;
+  classId?: string;
+}
+
+export interface UpdateStudentData {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  status?: StudentStatus;
+  classId?: string;
 }

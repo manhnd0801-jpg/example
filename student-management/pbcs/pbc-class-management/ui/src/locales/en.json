@@ -1,0 +1,18 @@
+{
+  "class": {
+    "title": "Class Management",
+    "create": "Add class",
+    "edit": "Edit class",
+    "delete": "Delete class",
+    "classCode": "Class code",
+    "name": "Class name",
+    "course": "Course",
+    "teacher": "Teacher",
+    "maxStudents": "Max students",
+    "currentStudents": "Current students",
+    "status": "Status",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "assignTeacher": "Assign teacher"
+  }
+}

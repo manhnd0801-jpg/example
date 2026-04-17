@@ -1,0 +1,18 @@
+{
+  "class": {
+    "title": "Quản lý Lớp học",
+    "create": "Thêm lớp học",
+    "edit": "Sửa lớp học",
+    "delete": "Xóa lớp học",
+    "classCode": "Mã lớp",
+    "name": "Tên lớp",
+    "course": "Khóa học",
+    "teacher": "Giảng viên",
+    "maxStudents": "Sĩ số tối đa",
+    "currentStudents": "Sĩ số hiện tại",
+    "status": "Trạng thái",
+    "startDate": "Ngày bắt đầu",
+    "endDate": "Ngày kết thúc",
+    "assignTeacher": "Phân công giảng viên"
+  }
+}

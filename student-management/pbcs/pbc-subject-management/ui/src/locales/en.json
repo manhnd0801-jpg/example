@@ -1,0 +1,13 @@
+{
+  "subject": {
+    "title": "Subject Management",
+    "create": "Add subject",
+    "edit": "Edit subject",
+    "delete": "Delete subject",
+    "subjectCode": "Subject code",
+    "name": "Subject name",
+    "description": "Description",
+    "credits": "Credits",
+    "status": "Status"
+  }
+}

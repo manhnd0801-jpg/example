@@ -1,8 +1,19 @@
-// AI-GENERATED
+// app-shell/src/layout/DesignTokenProvider.tsx
+//
+// Inject CSS variables vào :root dựa trên theme config trong app-manifest.json
+// R-10: PBC PHẢI dùng var(--color-primary) v.v. — không được override :root từ PBC
+//
 import React, { useEffect } from "react";
 import { ConfigProvider, theme } from "antd";
 import viVN from "antd/locale/vi_VN";
-import { appContract } from "../config/app-contract";
+import manifest from "../../../app-manifest.json";
+
+function hexToRgb(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `${r}, ${g}, ${b}`;
+}
 
 interface Props {
   children: React.ReactNode;
@@ -10,12 +21,18 @@ interface Props {
 
 export const DesignTokenProvider: React.FC<Props> = ({ children }) => {
   useEffect(() => {
-    // Inject CSS variables cho các PBC dùng var(--pbc-*)
-    const { theme: t } = appContract;
     const root = document.documentElement;
-    root.style.setProperty("--pbc-primary-color", t.primaryColor);
-    root.style.setProperty("--pbc-radius", t.radius);
-    root.style.setProperty("--pbc-font-family", t.fontFamily);
+    const { primaryColor, radius, fontFamily } = manifest.theme;
+
+    // Blueprint v2.9 tokens
+    root.style.setProperty("--color-primary", primaryColor);
+    root.style.setProperty("--color-primary-rgb", hexToRgb(primaryColor));
+
+    // Legacy tokens — backward compat với pbc-auth dùng --pbc-*
+    root.style.setProperty("--pbc-primary-color", primaryColor);
+    root.style.setProperty("--pbc-radius", radius);
+    root.style.setProperty("--pbc-font-family", fontFamily);
+    root.style.setProperty("--pbc-border-radius", radius);
   }, []);
 
   return (
@@ -24,9 +41,9 @@ export const DesignTokenProvider: React.FC<Props> = ({ children }) => {
       theme={{
         algorithm: theme.defaultAlgorithm,
         token: {
-          colorPrimary: appContract.theme.primaryColor,
-          borderRadius: parseInt(appContract.theme.radius),
-          fontFamily: appContract.theme.fontFamily,
+          colorPrimary:  manifest.theme.primaryColor,
+          borderRadius:  parseInt(manifest.theme.radius),
+          fontFamily:    manifest.theme.fontFamily,
         },
       }}
     >

@@ -1,0 +1,13 @@
+{
+  "subject": {
+    "title": "Quản lý Môn học",
+    "create": "Thêm môn học",
+    "edit": "Sửa môn học",
+    "delete": "Xóa môn học",
+    "subjectCode": "Mã môn học",
+    "name": "Tên môn học",
+    "description": "Mô tả",
+    "credits": "Số tín chỉ",
+    "status": "Trạng thái"
+  }
+}

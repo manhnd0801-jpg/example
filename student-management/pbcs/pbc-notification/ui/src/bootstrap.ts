@@ -1,3 +1,6 @@
-// Bootstrap entry — export default NotificationListSlot cho App Shell
-export { default } from './slots/NotificationListSlot';
+// Bootstrap entry — export default cho App Shell (Module Federation)
+// App Shell load './bootstrap' để mount PBC vào main-content
+import StandaloneApp from './StandaloneApp';
+
+export default StandaloneApp;
 export * from './index';

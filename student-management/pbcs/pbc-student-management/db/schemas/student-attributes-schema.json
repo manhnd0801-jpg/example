@@ -1,0 +1,36 @@
+{
+  "title": "StudentAttributes",
+  "description": "Schema cho cột attributes JSON trong bảng students",
+  "type": "object",
+  "properties": {
+    "avatarUrl": {
+      "type": "string",
+      "description": "URL ảnh đại diện"
+    },
+    "nationalId": {
+      "type": "string",
+      "description": "Số CMND/CCCD"
+    },
+    "ethnicity": {
+      "type": "string",
+      "description": "Dân tộc"
+    },
+    "religion": {
+      "type": "string",
+      "description": "Tôn giáo"
+    },
+    "parentName": {
+      "type": "string",
+      "description": "Tên phụ huynh"
+    },
+    "parentPhone": {
+      "type": "string",
+      "description": "Số điện thoại phụ huynh"
+    },
+    "gpa": {
+      "type": "number",
+      "description": "Điểm trung bình tích lũy"
+    }
+  },
+  "additionalProperties": true
+}

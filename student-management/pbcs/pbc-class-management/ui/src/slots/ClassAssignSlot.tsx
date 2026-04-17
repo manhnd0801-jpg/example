@@ -1,36 +1,56 @@
 // AI-GENERATED
+// Slot: class-assign — phân công giảng viên cho lớp học
 import React, { useState } from 'react';
-import { Input, Button, Space, message } from 'antd';
-import axios from 'axios';
+import { Form, Input, Button, Space, Card, message } from 'antd';
+import { assignTeacher } from '../services/pbc-api';
+import { emitClassEvent } from '../hooks/event-handlers';
 
-const BASE = import.meta.env.VITE_CLASS_MGMT_URL || 'http://localhost:3003';
+interface ClassAssignSlotProps {
+  classId?: string;
+  onAssigned?: () => void;
+}
 
-export default function ClassAssignSlot({ classId, onSuccess }: { classId: string; onSuccess?: () => void }) {
-  const [studentId, setStudentId] = useState('');
+const ClassAssignSlot: React.FC<ClassAssignSlotProps> = ({ classId, onAssigned }) => {
   const [loading, setLoading] = useState(false);
-  const headers = { Authorization: `Bearer ${localStorage.getItem('accessToken')}` };
+  const [form] = Form.useForm();
 
-  const handleAssign = async () => {
-    if (!studentId.trim()) return;
+  const handleSubmit = async ({ teacherId }: { teacherId: string }) => {
+    if (!classId) { message.warning('Chưa chọn lớp học'); return; }
     setLoading(true);
     try {
-      await axios.post(`${BASE}/v1/classes/${classId}/students`,
-        { data: { studentId }, metadata: { tenantId: localStorage.getItem('tenantId') || 'dev-tenant' } },
-        { headers });
-      message.success('Gán sinh viên thành công');
-      setStudentId('');
-      onSuccess?.();
-    } catch (err: any) {
-      message.error(err?.response?.data?.metadata?.error?.message || 'Không thể gán sinh viên');
+      await assignTeacher(classId, teacherId);
+      message.success('Phân công giảng viên thành công');
+      emitClassEvent('class.updated', { classId, teacherId });
+      form.resetFields();
+      onAssigned?.();
+    } catch (err) {
+      message.error((err as Error).message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Space>
-      <Input value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="Nhập Student ID" style={{ width: 300 }} />
-      <Button type="primary" loading={loading} onClick={handleAssign}>Gán vào lớp</Button>
-    </Space>
+    <Card title="Phân công giảng viên" style={{ margin: 24, maxWidth: 480 }}>
+      <Form form={form} layout="vertical" onFinish={handleSubmit}>
+        <Form.Item
+          name="teacherId"
+          label="Teacher ID"
+          rules={[{ required: true, message: 'Vui lòng nhập Teacher ID' }]}
+        >
+          <Input placeholder="Nhập ID giảng viên" />
+        </Form.Item>
+        <Form.Item>
+          <Space>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              Phân công
+            </Button>
+            <Button onClick={() => form.resetFields()}>Hủy</Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </Card>
   );
-}
+};
+
+export default ClassAssignSlot;

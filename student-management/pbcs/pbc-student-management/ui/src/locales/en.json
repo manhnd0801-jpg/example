@@ -1,22 +1,15 @@
 {
   "student": {
     "title": "Student Management",
-    "list": "Student List",
-    "create": "Add Student",
-    "edit": "Edit Student",
-    "detail": "Student Detail",
-    "studentCode": "Student Code",
-    "fullName": "Full Name",
+    "create": "Add student",
+    "edit": "Edit student",
+    "delete": "Delete student",
+    "studentCode": "Student code",
+    "fullName": "Full name",
     "email": "Email",
     "phone": "Phone",
+    "dateOfBirth": "Date of birth",
     "status": "Status",
-    "gender": "Gender",
-    "dateOfBirth": "Date of Birth",
-    "address": "Address",
-    "enrollmentDate": "Enrollment Date",
-    "status_ACTIVE": "Active",
-    "status_SUSPENDED": "Suspended",
-    "status_GRADUATED": "Graduated",
-    "status_DROPPED_OUT": "Dropped Out"
+    "class": "Class"
   }
 }

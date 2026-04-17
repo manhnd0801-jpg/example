@@ -1,0 +1,18 @@
+{
+  "notification": {
+    "title": "Notifications",
+    "markRead": "Mark as read",
+    "dismiss": "Dismiss",
+    "unread": "Unread",
+    "read": "Read",
+    "dismissed": "Dismissed",
+    "noNotifications": "No new notifications"
+  },
+  "auditLog": {
+    "title": "Audit Log",
+    "action": "Action",
+    "resource": "Resource",
+    "user": "User",
+    "time": "Time"
+  }
+}

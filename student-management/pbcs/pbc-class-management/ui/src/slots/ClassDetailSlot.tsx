@@ -1,46 +1,51 @@
 // AI-GENERATED
+// Slot: class-detail — hiển thị chi tiết lớp học
 import React, { useEffect, useState } from 'react';
-import { Descriptions, Table, Tag, Spin, Progress, message } from 'antd';
-import axios from 'axios';
+import { Descriptions, Tag, Spin, Card, message } from 'antd';
+import { getClassById } from '../services/pbc-api';
+import type { ClassDto, ClassStatus } from '../types';
 
-const BASE = import.meta.env.VITE_CLASS_MGMT_URL || 'http://localhost:3003';
+const STATUS_COLOR: Record<ClassStatus, string> = {
+  ACTIVE: 'green',
+  INACTIVE: 'default',
+  COMPLETED: 'blue',
+};
 
-export default function ClassDetailSlot({ classId }: { classId: string }) {
-  const [cls, setCls] = useState<any>(null);
-  const [students, setStudents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const headers = { Authorization: `Bearer ${localStorage.getItem('accessToken')}` };
+interface ClassDetailSlotProps {
+  classId?: string;
+}
+
+const ClassDetailSlot: React.FC<ClassDetailSlotProps> = ({ classId }) => {
+  const [cls, setCls] = useState<ClassDto | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      axios.get(`${BASE}/v1/classes/${classId}`, { headers }),
-      axios.get(`${BASE}/v1/classes/${classId}/students`, { headers }),
-    ])
-      .then(([c, s]) => { setCls(c.data.data); setStudents(s.data.data.students || []); })
-      .catch(() => message.error('Không thể tải thông tin lớp'))
+    if (!classId) return;
+    setLoading(true);
+    getClassById(classId)
+      .then((res) => setCls(res.data))
+      .catch((err) => message.error((err as Error).message))
       .finally(() => setLoading(false));
   }, [classId]);
 
-  if (loading) return <Spin />;
-  if (!cls) return <div>Không tìm thấy lớp học</div>;
+  if (!classId) return <div style={{ padding: 24, color: '#999' }}>Chọn một lớp học để xem chi tiết.</div>;
+  if (loading) return <Spin style={{ display: 'block', margin: '40px auto' }} />;
+  if (!cls) return <div style={{ padding: 24 }}>Không tìm thấy lớp học.</div>;
 
   return (
-    <div>
-      <Descriptions bordered column={2} style={{ marginBottom: 24 }}>
+    <Card style={{ margin: 24 }}>
+      <Descriptions bordered column={2} title="Thông tin lớp học">
         <Descriptions.Item label="Mã lớp">{cls.classCode}</Descriptions.Item>
-        <Descriptions.Item label="Tên lớp">{cls.className}</Descriptions.Item>
-        <Descriptions.Item label="Năm học">{cls.academicYear}</Descriptions.Item>
-        <Descriptions.Item label="Trạng thái"><Tag color="green">{cls.status}</Tag></Descriptions.Item>
-        <Descriptions.Item label="Sĩ số">
-          {cls.currentStudents}/{cls.maxStudents}
-          <Progress percent={Math.round((cls.currentStudents / cls.maxStudents) * 100)} size="small" style={{ width: 100, display: 'inline-block', marginLeft: 8 }} />
+        <Descriptions.Item label="Tên lớp">{cls.name}</Descriptions.Item>
+        <Descriptions.Item label="Sĩ số">{cls.currentStudents}/{cls.maxStudents}</Descriptions.Item>
+        <Descriptions.Item label="Trạng thái">
+          <Tag color={STATUS_COLOR[cls.status]}>{cls.status}</Tag>
         </Descriptions.Item>
+        <Descriptions.Item label="Ngày bắt đầu">{cls.startDate ?? '—'}</Descriptions.Item>
+        <Descriptions.Item label="Ngày kết thúc">{cls.endDate ?? '—'}</Descriptions.Item>
       </Descriptions>
-      <Table rowKey="id" dataSource={students} columns={[
-        { title: 'Student ID', dataIndex: 'studentId', key: 'studentId' },
-        { title: 'Ngày gán', dataIndex: 'assignedDate', key: 'assignedDate' },
-        { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: (s: string) => <Tag>{s}</Tag> },
-      ]} />
-    </div>
+    </Card>
   );
-}
+};
+
+export default ClassDetailSlot;

@@ -11,21 +11,57 @@ export class EventPublisher implements OnModuleInit, OnModuleDestroy {
 
   constructor(private readonly config: ConfigService) {
     const kafka = new Kafka({
-      clientId: this.config.get('KAFKA_CLIENT_ID', 'pbc-class-management'),
+      clientId: this.config.get('KAFKA_CLIENT_ID', 'pbc-class-management-api'),
       brokers: this.config.getOrThrow<string>('KAFKA_BROKERS').split(','),
+      retry: { retries: 3, initialRetryTime: 300, factor: 2 },
     });
     this.producer = kafka.producer();
   }
 
-  async onModuleInit() { await this.producer.connect(); }
-  async onModuleDestroy() { await this.producer.disconnect(); }
-
-  async publish(topic: string, data: Record<string, unknown>, tenantId: string, correlationId: string) {
-    const envelope = { eventId: uuidv4(), eventType: topic, schemaVersion: '1.0', occurredAt: new Date().toISOString(), tenantId, correlationId: correlationId || uuidv4(), data };
+  async onModuleInit(): Promise<void> {
     try {
-      await this.producer.send({ topic, messages: [{ key: tenantId, value: JSON.stringify(envelope) }] });
+      await this.producer.connect();
+      this.logger.log('Kafka producer connected');
     } catch (err) {
-      this.logger.error(`Failed to publish ${topic}: ${(err as Error).message}`);
+      this.logger.warn(
+        `Kafka producer failed to connect: ${(err as Error).message}. Events will be dropped until Kafka is available.`,
+      );
+    }
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.producer.disconnect();
+  }
+
+  async publish(
+    topic: string,
+    data: Record<string, unknown>,
+    tenantId: string,
+    correlationId: string,
+  ): Promise<void> {
+    const envelope = {
+      eventId: uuidv4(),
+      eventType: topic,
+      schemaVersion: '1.0',
+      occurredAt: new Date().toISOString(),
+      tenantId,
+      correlationId: correlationId || uuidv4(),
+      data,
+    };
+    try {
+      await this.producer.send({
+        topic,
+        messages: [
+          {
+            key: tenantId,
+            value: JSON.stringify(envelope),
+            headers: { 'X-Tenant-Id': tenantId, 'X-Correlation-Id': correlationId },
+          },
+        ],
+      });
+      this.logger.debug(`Published event ${topic} [correlationId=${correlationId}]`);
+    } catch (err) {
+      this.logger.error(`Failed to publish event ${topic}: ${(err as Error).message}`, err);
     }
   }
 }

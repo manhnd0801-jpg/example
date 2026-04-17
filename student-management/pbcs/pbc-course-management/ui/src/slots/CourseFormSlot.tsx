@@ -1,34 +1,40 @@
 // AI-GENERATED
-import React from 'react';
-import { Form, Input, InputNumber, Select, Button, message } from 'antd';
-import axios from 'axios';
+// Slot: course-form — thin wrapper, dùng khi App Shell mount form độc lập
+import React, { useState } from 'react';
+import { message } from 'antd';
+import CourseForm from '../components/business/CourseForm';
+import { createCourse } from '../services/pbc-api';
+import { emitCourseEvent } from '../hooks/event-handlers';
+import type { CreateCourseData } from '../types';
 
-const BASE = import.meta.env.VITE_COURSE_MGMT_URL || 'http://localhost:3004';
-const token = () => localStorage.getItem('accessToken');
-const tenantId = () => localStorage.getItem('tenantId') || 'dev-tenant';
+interface CourseFormSlotProps {
+  onSuccess?: () => void;
+}
 
-export default function CourseFormSlot({ onSuccess }: { onSuccess?: () => void }) {
-  const [form] = Form.useForm();
-  const handleSubmit = async (values: any) => {
+const CourseFormSlot: React.FC<CourseFormSlotProps> = ({ onSuccess }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (data: CreateCourseData) => {
+    setLoading(true);
     try {
-      await axios.post(`${BASE}/v1/courses`, { data: values, metadata: { tenantId: tenantId() } }, { headers: { Authorization: `Bearer ${token()}` } });
-      message.success('Tạo chương trình thành công');
-      form.resetFields();
+      await createCourse(data);
+      message.success('Tạo khóa học thành công');
+      emitCourseEvent('course.created', data as Record<string, unknown>);
       onSuccess?.();
-    } catch (err: any) { message.error(err?.response?.data?.message || 'Có lỗi xảy ra'); }
+    } catch (err) {
+      message.error((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ maxWidth: 500 }}>
-      <Form.Item name="courseCode" label="Mã chương trình" rules={[{ required: true }]}><Input /></Form.Item>
-      <Form.Item name="courseName" label="Tên chương trình" rules={[{ required: true }]}><Input /></Form.Item>
-      <Form.Item name="description" label="Mô tả"><Input.TextArea rows={3} /></Form.Item>
-      <Form.Item name="durationYears" label="Số năm đào tạo" initialValue={4}><InputNumber min={1} max={6} style={{ width: '100%' }} /></Form.Item>
-      <Form.Item name="totalCredits" label="Tổng tín chỉ" initialValue={140}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
-      <Form.Item name="status" label="Trạng thái" initialValue="UPCOMING">
-        <Select options={[{ value: 'UPCOMING', label: 'Sắp mở' }, { value: 'ACTIVE', label: 'Đang hoạt động' }, { value: 'CLOSED', label: 'Đã đóng' }]} />
-      </Form.Item>
-      <Form.Item><Button type="primary" htmlType="submit">Tạo chương trình</Button></Form.Item>
-    </Form>
+    <CourseForm
+      loading={loading}
+      onSubmit={handleSubmit}
+      onCancel={() => onSuccess?.()}
+    />
   );
-}
+};
+
+export default CourseFormSlot;

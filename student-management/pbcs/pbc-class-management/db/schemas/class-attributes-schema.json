@@ -1,0 +1,24 @@
+{
+  "title": "ClassAttributes",
+  "description": "Schema cho cột attributes JSON trong bảng classes",
+  "type": "object",
+  "properties": {
+    "room": {
+      "type": "string",
+      "description": "Phòng học"
+    },
+    "schedule": {
+      "type": "string",
+      "description": "Lịch học (ví dụ: Thứ 2, 4, 6 - 7:30-9:30)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Ghi chú thêm về lớp học"
+    },
+    "semester": {
+      "type": "string",
+      "description": "Học kỳ (ví dụ: HK1-2026)"
+    }
+  },
+  "additionalProperties": true
+}

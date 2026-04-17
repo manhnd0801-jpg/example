@@ -1,53 +1,75 @@
 // AI-GENERATED
+// Slot: notification-bell — badge + popover hiển thị thông báo chưa đọc
 import React, { useEffect, useState } from 'react';
-import { Badge, Button, Popover, List, Typography, Empty } from 'antd';
+import { Badge, Button, Popover, List, Typography, Empty, message } from 'antd';
 import { BellOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import { listNotifications, markAsRead, getUnreadCount } from '../services/pbc-api';
+import { emitNotificationEvent } from '../hooks/event-handlers';
+import type { NotificationDto } from '../types';
 
-const BASE = import.meta.env.VITE_NOTIFICATION_URL || 'http://localhost:3006';
+const { Text } = Typography;
 
-export default function NotificationBellSlot() {
-  const [notifications, setNotifications] = useState<any[]>([]);
+const NotificationBellSlot: React.FC = () => {
+  const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
 
-  const fetchNotifications = () => {
-    axios.get(`${BASE}/v1/notifications`, { params: { pageSize: 5, isRead: false }, headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } })
-      .then(r => {
-        setNotifications(r.data.data.notifications || []);
-        setUnreadCount(r.data.data.unreadCount || 0);
-      })
-      .catch(() => {});
+  const fetchData = async () => {
+    try {
+      const [listRes, countRes] = await Promise.all([
+        listNotifications({ pageSize: 5, status: 'UNREAD' }),
+        getUnreadCount(),
+      ]);
+      setNotifications(listRes.data.items);
+      setUnreadCount(countRes.data.count);
+    } catch {
+      // Bell không nên crash app nếu notification service down
+    }
   };
 
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
+    fetchData();
+    const interval = setInterval(fetchData, 30_000);
     return () => clearInterval(interval);
   }, []);
 
-  const markAllRead = async () => {
-    await axios.patch(`${BASE}/v1/notifications/read-all`, {}, { headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } });
-    fetchNotifications();
+  const handleMarkRead = async (id: string) => {
+    try {
+      await markAsRead(id);
+      emitNotificationEvent('notification.read', { notificationId: id });
+      fetchData();
+    } catch (err) {
+      message.error((err as Error).message);
+    }
   };
 
   const content = (
     <div style={{ width: 320 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-        <Typography.Text strong>Thông báo</Typography.Text>
-        {unreadCount > 0 && <Button size="small" type="link" onClick={markAllRead}>Đọc tất cả</Button>}
+        <Text strong>Thông báo</Text>
       </div>
       {notifications.length === 0 ? (
         <Empty description="Không có thông báo mới" image={Empty.PRESENTED_IMAGE_SIMPLE} />
       ) : (
-        <List size="small" dataSource={notifications} renderItem={(item: any) => (
-          <List.Item style={{ background: item.isRead ? 'transparent' : '#f0f7ff', borderRadius: 4, padding: '8px 12px', marginBottom: 4 }}>
-            <List.Item.Meta
-              title={<Typography.Text strong={!item.isRead}>{item.title}</Typography.Text>}
-              description={<Typography.Text type="secondary" style={{ fontSize: 12 }}>{item.content}</Typography.Text>}
-            />
-          </List.Item>
-        )} />
+        <List
+          size="small"
+          dataSource={notifications}
+          renderItem={(item) => (
+            <List.Item
+              style={{ background: '#f0f7ff', borderRadius: 4, padding: '8px 12px', marginBottom: 4 }}
+              actions={[
+                <Button key="read" size="small" type="link" onClick={() => handleMarkRead(item.id)}>
+                  Đã đọc
+                </Button>,
+              ]}
+            >
+              <List.Item.Meta
+                title={<Text strong>{item.title}</Text>}
+                description={<Text type="secondary" style={{ fontSize: 12 }}>{item.message}</Text>}
+              />
+            </List.Item>
+          )}
+        />
       )}
     </div>
   );
@@ -59,4 +81,6 @@ export default function NotificationBellSlot() {
       </Badge>
     </Popover>
   );
-}
+};
+
+export default NotificationBellSlot;

@@ -1,57 +1,74 @@
 // AI-GENERATED
+// Slot: notification-list — danh sách thông báo với filter và phân trang
 import React, { useEffect, useState } from 'react';
-import { List, Tag, Button, Space, Select, message } from 'antd';
-import { CheckOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import { Select, Space, message } from 'antd';
+import NotificationList from '../components/business/NotificationList';
+import { listNotifications, markAsRead, dismissNotification } from '../services/pbc-api';
+import { emitNotificationEvent } from '../hooks/event-handlers';
+import type { NotificationDto, NotificationStatus } from '../types';
 
-const BASE = import.meta.env.VITE_NOTIFICATION_URL || 'http://localhost:3006';
-
-export default function NotificationListSlot() {
-  const [notifications, setNotifications] = useState<any[]>([]);
+const NotificationListSlot: React.FC = () => {
+  const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isRead, setIsRead] = useState<string | undefined>();
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const headers = { Authorization: `Bearer ${localStorage.getItem('accessToken')}` };
+  const [status, setStatus] = useState<NotificationStatus | undefined>();
 
-  const fetch = () => {
+  const fetchNotifications = async () => {
     setLoading(true);
-    axios.get(`${BASE}/v1/notifications`, { params: { page, pageSize: 20, isRead }, headers })
-      .then(r => { setNotifications(r.data.data.notifications || []); setTotal(r.data.data.pagination?.total || 0); })
-      .catch(() => message.error('Không thể tải thông báo'))
-      .finally(() => setLoading(false));
+    try {
+      const res = await listNotifications({ pageSize: 20, status });
+      setNotifications(res.data.items);
+    } catch (err) {
+      message.error((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetch(); }, [page, isRead]);
+  useEffect(() => { fetchNotifications(); }, [status]);
 
-  const markRead = async (id: string) => {
-    await axios.patch(`${BASE}/v1/notifications/${id}/read`, {}, { headers });
-    fetch();
+  const handleMarkRead = async (id: string) => {
+    try {
+      await markAsRead(id);
+      emitNotificationEvent('notification.read', { notificationId: id });
+      fetchNotifications();
+    } catch (err) {
+      message.error((err as Error).message);
+    }
+  };
+
+  const handleDismiss = async (id: string) => {
+    try {
+      await dismissNotification(id);
+      emitNotificationEvent('notification.dismissed', { notificationId: id });
+      fetchNotifications();
+    } catch (err) {
+      message.error((err as Error).message);
+    }
   };
 
   return (
-    <div>
+    <div style={{ padding: 24 }}>
       <Space style={{ marginBottom: 16 }}>
-        <Select placeholder="Lọc trạng thái" allowClear style={{ width: 160 }} onChange={setIsRead}
-          options={[{ value: 'false', label: 'Chưa đọc' }, { value: 'true', label: 'Đã đọc' }]} />
-        <Button onClick={() => axios.patch(`${BASE}/v1/notifications/read-all`, {}, { headers }).then(fetch)}>Đọc tất cả</Button>
+        <Select
+          placeholder="Lọc trạng thái"
+          allowClear
+          style={{ width: 160 }}
+          onChange={(v) => setStatus(v as NotificationStatus | undefined)}
+          options={[
+            { value: 'UNREAD', label: 'Chưa đọc' },
+            { value: 'READ', label: 'Đã đọc' },
+            { value: 'DISMISSED', label: 'Đã ẩn' },
+          ]}
+        />
       </Space>
-      <List
+      <NotificationList
+        notifications={notifications}
         loading={loading}
-        dataSource={notifications}
-        pagination={{ current: page, total, pageSize: 20, onChange: setPage }}
-        renderItem={(item: any) => (
-          <List.Item
-            style={{ background: item.isRead ? 'transparent' : '#f0f7ff', borderRadius: 6, marginBottom: 4, padding: '12px 16px' }}
-            actions={[!item.isRead && <Button size="small" icon={<CheckOutlined />} onClick={() => markRead(item.id)}>Đọc</Button>].filter(Boolean)}
-          >
-            <List.Item.Meta
-              title={<Space>{item.title}<Tag color={item.isRead ? 'default' : 'blue'}>{item.isRead ? 'Đã đọc' : 'Mới'}</Tag></Space>}
-              description={item.content}
-            />
-          </List.Item>
-        )}
+        onMarkRead={handleMarkRead}
+        onDismiss={handleDismiss}
       />
     </div>
   );
-}
+};
+
+export default NotificationListSlot;

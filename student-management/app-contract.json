@@ -2,21 +2,107 @@
   "appId": "student-management",
   "version": "1.0.0",
   "name": "Student Management Portal",
-  "description": "Hệ thống quản lý sinh viên",
+  "description": "Composed app for student management capabilities",
   "category": "Education",
   "domain": "student-management",
   "includedPBCs": [
-    { "pbcId": "pbc-auth", "version": "1.0.0" },
-    { "pbcId": "pbc-student-management", "version": "1.0.0" },
-    { "pbcId": "pbc-class-management", "version": "1.0.0" },
-    { "pbcId": "pbc-course-management", "version": "1.0.0" },
-    { "pbcId": "pbc-subject-management", "version": "1.0.0" },
-    { "pbcId": "pbc-notification", "version": "1.0.0" }
+    {
+      "pbcId": "pbc-auth",
+      "version": "1.0.0",
+      "enabledSlots": [
+        {
+          "slotName": "LoginSlot",
+          "mountPoint": "login-page",
+          "visible": true,
+          "order": 0
+        },
+        {
+          "slotName": "ProfileSlot",
+          "mountPoint": "main-content",
+          "visible": true,
+          "order": 0,
+          "routeMatch": "/profile"
+        },
+        {
+          "slotName": "UserManagementSlot",
+          "mountPoint": "main-content",
+          "visible": true,
+          "order": 0,
+          "routeMatch": "/user-management",
+          "requiredRoles": ["ADMIN", "ACADEMIC_STAFF"]
+        }
+      ]
+    },
+    {
+      "pbcId": "pbc-student-management",
+      "version": "1.0.0",
+      "enabledSlots": [
+        {
+          "slotName": "bootstrap",
+          "mountPoint": "main-content",
+          "visible": true,
+          "order": 1,
+          "routeMatch": "/students"
+        }
+      ]
+    },
+    {
+      "pbcId": "pbc-class-management",
+      "version": "1.0.0",
+      "enabledSlots": [
+        {
+          "slotName": "bootstrap",
+          "mountPoint": "main-content",
+          "visible": true,
+          "order": 1,
+          "routeMatch": "/classes"
+        }
+      ]
+    },
+    {
+      "pbcId": "pbc-course-management",
+      "version": "1.0.0",
+      "enabledSlots": [
+        {
+          "slotName": "bootstrap",
+          "mountPoint": "main-content",
+          "visible": true,
+          "order": 1,
+          "routeMatch": "/courses"
+        }
+      ]
+    },
+    {
+      "pbcId": "pbc-subject-management",
+      "version": "1.0.0",
+      "enabledSlots": [
+        {
+          "slotName": "bootstrap",
+          "mountPoint": "main-content",
+          "visible": true,
+          "order": 1,
+          "routeMatch": "/subjects"
+        }
+      ]
+    },
+    {
+      "pbcId": "pbc-notification",
+      "version": "1.0.0",
+      "enabledSlots": [
+        {
+          "slotName": "bootstrap",
+          "mountPoint": "main-content",
+          "visible": true,
+          "order": 1,
+          "routeMatch": "/notifications"
+        }
+      ]
+    }
   ],
   "eventBus": {
     "type": "kafka",
     "version": "3.x",
-    "topicPrefix": "pbc"
+    "topicPrefix": "app.student-management"
   },
   "appShell": {
     "framework": "react",
@@ -24,20 +110,25 @@
     "uiStrategy": "module-federation",
     "federationPlugin": "@originjs/vite-plugin-federation",
     "basePath": "/",
-    "defaultRoute": "/students"
+    "defaultRoute": "/dashboard"
   },
   "theme": {
-    "primaryColor": "#1677ff",
+    "primaryColor": "#0d6efd",
     "radius": "8px",
     "fontFamily": "Inter, sans-serif"
   },
   "security": {
     "authPBC": "pbc-auth",
-    "publicRoutes": ["/login", "/health"],
+    "publicRoutes": ["/health", "/login"],
     "defaultPolicy": "authenticated"
   },
   "i18n": {
     "defaultLocale": "vi",
     "supportedLocales": ["vi", "en"]
+  },
+  "uiStrategy": {
+    "type": "module-federation",
+    "shadowDOM": false,
+    "styleIsolation": false
   }
 }

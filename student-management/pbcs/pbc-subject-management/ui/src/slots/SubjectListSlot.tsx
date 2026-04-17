@@ -1,50 +1,96 @@
 // AI-GENERATED
+// Slot: subject-list — thin wrapper, orchestrate SubjectTable component
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Tag, Space, Select, Modal, message } from 'antd';
+import { Button, Modal, Space, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import axios from 'axios';
-import SubjectFormSlot from './SubjectFormSlot';
+import SubjectTable from '../components/business/SubjectTable';
+import SubjectForm from '../components/business/SubjectForm';
+import { listSubjects, deleteSubject, createSubject } from '../services/pbc-api';
+import { emitSubjectEvent } from '../hooks/event-handlers';
+import type { SubjectDto, CreateSubjectData } from '../types';
 
-const BASE = import.meta.env.VITE_SUBJECT_MGMT_URL || 'http://localhost:3005';
-const TYPE_COLORS: Record<string, string> = { REQUIRED: 'red', ELECTIVE: 'blue', FREE_ELECTIVE: 'green' };
-
-export default function SubjectListSlot() {
-  const [subjects, setSubjects] = useState<any[]>([]);
+const SubjectListSlot: React.FC = () => {
+  const [subjects, setSubjects] = useState<SubjectDto[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [subjectType, setSubjectType] = useState<string | undefined>();
   const [showForm, setShowForm] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
 
-  const fetchSubjects = () => {
+  const fetchSubjects = async (p = page) => {
     setLoading(true);
-    axios.get(`${BASE}/v1/subjects`, { params: { subjectType }, headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } })
-      .then(r => setSubjects(r.data.data.subjects || []))
-      .catch(() => message.error('Không thể tải danh sách môn học'))
-      .finally(() => setLoading(false));
+    try {
+      const res = await listSubjects({ page: p, pageSize: 20 });
+      setSubjects(res.data.items);
+      setTotal(res.data.total);
+    } catch (err) {
+      message.error((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchSubjects(); }, [subjectType]);
+  useEffect(() => { fetchSubjects(); }, [page]);
 
-  const columns = [
-    { title: 'Mã MH', dataIndex: 'subjectCode', key: 'subjectCode' },
-    { title: 'Tên môn học', dataIndex: 'subjectName', key: 'subjectName' },
-    { title: 'LT', dataIndex: 'theoryCredits', key: 'theoryCredits' },
-    { title: 'TH', dataIndex: 'practiceCredits', key: 'practiceCredits' },
-    { title: 'Tổng TC', dataIndex: 'totalCredits', key: 'totalCredits' },
-    { title: 'Loại', dataIndex: 'subjectType', key: 'subjectType', render: (t: string) => <Tag color={TYPE_COLORS[t]}>{t}</Tag> },
-    { title: 'Thao tác', key: 'actions', render: () => <Space><Button size="small" type="link">Xem</Button><Button size="small" type="link">Gán lớp</Button></Space> },
-  ];
+  const handleDelete = async (subjectId: string) => {
+    try {
+      await deleteSubject(subjectId);
+      message.success('Xóa môn học thành công');
+      emitSubjectEvent('subject.deleted', { subjectId });
+      fetchSubjects();
+    } catch (err) {
+      message.error((err as Error).message);
+    }
+  };
+
+  const handleCreate = async (data: CreateSubjectData) => {
+    setFormLoading(true);
+    try {
+      await createSubject(data);
+      message.success('Thêm môn học thành công');
+      emitSubjectEvent('subject.created', data as Record<string, unknown>);
+      setShowForm(false);
+      fetchSubjects();
+    } catch (err) {
+      message.error((err as Error).message);
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   return (
-    <div>
+    <div style={{ padding: 24 }}>
       <Space style={{ marginBottom: 16 }}>
-        <Select placeholder="Lọc loại môn học" allowClear style={{ width: 180 }} onChange={setSubjectType}
-          options={[{ value: 'REQUIRED', label: 'Bắt buộc' }, { value: 'ELECTIVE', label: 'Tự chọn' }, { value: 'FREE_ELECTIVE', label: 'Tự chọn tự do' }]} />
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)}>Thêm môn học</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)}>
+          Thêm môn học
+        </Button>
       </Space>
-      <Table rowKey="id" columns={columns} dataSource={subjects} loading={loading} />
-      <Modal title="Thêm môn học" open={showForm} onCancel={() => setShowForm(false)} footer={null} destroyOnClose>
-        <SubjectFormSlot onSuccess={() => { setShowForm(false); fetchSubjects(); }} />
+
+      <SubjectTable
+        subjects={subjects}
+        total={total}
+        page={page}
+        loading={loading}
+        onEdit={() => setShowForm(true)}
+        onDelete={handleDelete}
+        onPageChange={setPage}
+      />
+
+      <Modal
+        title="Thêm môn học"
+        open={showForm}
+        onCancel={() => setShowForm(false)}
+        footer={null}
+        destroyOnClose
+      >
+        <SubjectForm
+          loading={formLoading}
+          onSubmit={handleCreate}
+          onCancel={() => setShowForm(false)}
+        />
       </Modal>
     </div>
   );
-}
+};
+
+export default SubjectListSlot;

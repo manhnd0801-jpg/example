@@ -1,48 +1,96 @@
 // AI-GENERATED
+// Slot: course-list — thin wrapper, orchestrate CourseTable component
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Tag, Space, Select, Modal, message } from 'antd';
+import { Button, Modal, Space, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import axios from 'axios';
-import CourseFormSlot from './CourseFormSlot';
+import CourseTable from '../components/business/CourseTable';
+import CourseForm from '../components/business/CourseForm';
+import { listCourses, deleteCourse, createCourse } from '../services/pbc-api';
+import { emitCourseEvent } from '../hooks/event-handlers';
+import type { CourseDto, CreateCourseData } from '../types';
 
-const BASE = import.meta.env.VITE_COURSE_MGMT_URL || 'http://localhost:3004';
-
-export default function CourseListSlot() {
-  const [courses, setCourses] = useState<any[]>([]);
+const CourseListSlot: React.FC = () => {
+  const [courses, setCourses] = useState<CourseDto[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<string | undefined>();
   const [showForm, setShowForm] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
 
-  const fetchCourses = () => {
+  const fetchCourses = async (p = page) => {
     setLoading(true);
-    axios.get(`${BASE}/v1/courses`, { params: { status }, headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` } })
-      .then(r => setCourses(r.data.data.courses || []))
-      .catch(() => message.error('Không thể tải danh sách chương trình'))
-      .finally(() => setLoading(false));
+    try {
+      const res = await listCourses({ page: p, pageSize: 20 });
+      setCourses(res.data.items);
+      setTotal(res.data.total);
+    } catch (err) {
+      message.error((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchCourses(); }, [status]);
+  useEffect(() => { fetchCourses(); }, [page]);
 
-  const columns = [
-    { title: 'Mã CT', dataIndex: 'courseCode', key: 'courseCode' },
-    { title: 'Tên chương trình', dataIndex: 'courseName', key: 'courseName' },
-    { title: 'Số năm', dataIndex: 'durationYears', key: 'durationYears', render: (v: number) => `${v} năm` },
-    { title: 'Tổng tín chỉ', dataIndex: 'totalCredits', key: 'totalCredits' },
-    { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: (s: string) => <Tag color={s === 'ACTIVE' ? 'green' : s === 'UPCOMING' ? 'blue' : 'default'}>{s}</Tag> },
-    { title: 'Thao tác', key: 'actions', render: () => <Space><Button size="small" type="link">Xem</Button><Button size="small" type="link">Sửa</Button></Space> },
-  ];
+  const handleDelete = async (courseId: string) => {
+    try {
+      await deleteCourse(courseId);
+      message.success('Xóa khóa học thành công');
+      emitCourseEvent('course.deleted', { courseId });
+      fetchCourses();
+    } catch (err) {
+      message.error((err as Error).message);
+    }
+  };
+
+  const handleCreate = async (data: CreateCourseData) => {
+    setFormLoading(true);
+    try {
+      await createCourse(data);
+      message.success('Tạo khóa học thành công');
+      emitCourseEvent('course.created', data as Record<string, unknown>);
+      setShowForm(false);
+      fetchCourses();
+    } catch (err) {
+      message.error((err as Error).message);
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   return (
-    <div>
+    <div style={{ padding: 24 }}>
       <Space style={{ marginBottom: 16 }}>
-        <Select placeholder="Lọc trạng thái" allowClear style={{ width: 160 }} onChange={setStatus}
-          options={[{ value: 'ACTIVE', label: 'Đang hoạt động' }, { value: 'UPCOMING', label: 'Sắp mở' }, { value: 'CLOSED', label: 'Đã đóng' }]} />
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)}>Thêm chương trình</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)}>
+          Thêm khóa học
+        </Button>
       </Space>
-      <Table rowKey="id" columns={columns} dataSource={courses} loading={loading} />
-      <Modal title="Thêm chương trình" open={showForm} onCancel={() => setShowForm(false)} footer={null} destroyOnClose>
-        <CourseFormSlot onSuccess={() => { setShowForm(false); fetchCourses(); }} />
+
+      <CourseTable
+        courses={courses}
+        total={total}
+        page={page}
+        loading={loading}
+        onEdit={() => setShowForm(true)}
+        onDelete={handleDelete}
+        onPageChange={setPage}
+      />
+
+      <Modal
+        title="Thêm khóa học"
+        open={showForm}
+        onCancel={() => setShowForm(false)}
+        footer={null}
+        destroyOnClose
+      >
+        <CourseForm
+          loading={formLoading}
+          onSubmit={handleCreate}
+          onCancel={() => setShowForm(false)}
+        />
       </Modal>
     </div>
   );
-}
+};
+
+export default CourseListSlot;

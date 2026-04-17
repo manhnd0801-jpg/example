@@ -1,42 +1,80 @@
 // AI-GENERATED
+// Slot: audit-log — nhật ký hệ thống
 import React, { useEffect, useState } from 'react';
-import { Table, Input, message, Typography } from 'antd';
-import axios from 'axios';
+import { Table, Input, Typography, message } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import { listAuditLogs } from '../services/pbc-api';
+import type { AuditLogDto } from '../types';
 
-const BASE = import.meta.env.VITE_NOTIFICATION_URL || 'http://localhost:3006';
+const { Text } = Typography;
 
-export default function AuditLogSlot() {
-  const [logs, setLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+interface AuditLogSlotProps {
+  resourceType?: string;
+  resourceId?: string;
+}
+
+const AuditLogSlot: React.FC<AuditLogSlotProps> = ({ resourceType, resourceId }) => {
+  const [logs, setLogs] = useState<AuditLogDto[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [eventType, setEventType] = useState('');
-  const headers = { Authorization: `Bearer ${localStorage.getItem('accessToken')}` };
+  const [resource, setResource] = useState(resourceType ?? '');
+  const [loading, setLoading] = useState(false);
 
-  const fetch = () => {
+  const fetchLogs = async (p = page) => {
     setLoading(true);
-    axios.get(`${BASE}/v1/audit-logs`, { params: { page, pageSize: 20, eventType: eventType || undefined }, headers })
-      .then(r => { setLogs(r.data.data.auditLogs || []); setTotal(r.data.data.pagination?.total || 0); })
-      .catch(err => {
-        if (err?.response?.status === 403) message.error('Chỉ Admin mới có quyền xem audit logs');
-        else message.error('Không thể tải audit logs');
-      })
-      .finally(() => setLoading(false));
+    try {
+      const res = await listAuditLogs({
+        page: p,
+        pageSize: 20,
+        resource: resource || undefined,
+      });
+      setLogs(res.data.items);
+      setTotal(res.data.total);
+    } catch (err) {
+      message.error((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetch(); }, [page, eventType]);
+  useEffect(() => { fetchLogs(); }, [page, resource]);
 
-  const columns = [
-    { title: 'Event Type', dataIndex: 'eventType', key: 'eventType', render: (t: string) => <Typography.Text code style={{ fontSize: 11 }}>{t}</Typography.Text> },
-    { title: 'Aggregate ID', dataIndex: 'aggregateId', key: 'aggregateId', render: (id: string) => id ? <Typography.Text copyable style={{ fontSize: 11 }}>{id?.slice(0, 8)}...</Typography.Text> : '-' },
-    { title: 'Mô tả', dataIndex: 'description', key: 'description' },
-    { title: 'Thời gian', dataIndex: 'occurredAt', key: 'occurredAt', render: (t: string) => new Date(t).toLocaleString('vi-VN') },
+  const columns: ColumnsType<AuditLogDto> = [
+    {
+      title: 'Hành động', dataIndex: 'action', key: 'action',
+      render: (v) => <Text code style={{ fontSize: 11 }}>{v}</Text>,
+    },
+    { title: 'Tài nguyên', dataIndex: 'resource', key: 'resource' },
+    {
+      title: 'Resource ID', dataIndex: 'resourceId', key: 'resourceId',
+      render: (v) => v ? <Text copyable style={{ fontSize: 11 }}>{String(v).slice(0, 8)}…</Text> : '—',
+    },
+    { title: 'Người dùng', dataIndex: 'userId', key: 'userId' },
+    {
+      title: 'Thời gian', dataIndex: 'createdAt', key: 'createdAt',
+      render: (v) => new Date(v).toLocaleString('vi-VN'),
+    },
   ];
 
   return (
-    <div>
-      <Input.Search placeholder="Lọc theo event type" onSearch={setEventType} style={{ width: 320, marginBottom: 16 }} allowClear />
-      <Table rowKey="id" columns={columns} dataSource={logs} loading={loading} pagination={{ current: page, total, pageSize: 20, onChange: setPage }} size="small" />
+    <div style={{ padding: 24 }}>
+      <Input.Search
+        placeholder="Lọc theo tài nguyên"
+        defaultValue={resourceType}
+        onSearch={setResource}
+        style={{ width: 320, marginBottom: 16 }}
+        allowClear
+      />
+      <Table
+        rowKey="id"
+        columns={columns}
+        dataSource={logs}
+        loading={loading}
+        size="small"
+        pagination={{ current: page, total, pageSize: 20, onChange: setPage }}
+      />
     </div>
   );
-}
+};
+
+export default AuditLogSlot;

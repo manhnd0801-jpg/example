@@ -1,36 +1,74 @@
 // AI-GENERATED
-import axios from 'axios';
-import type { Student, FlexiblePayload, Pagination } from '../types';
+// Type-safe HTTP client — tuân thủ quy tắc 15 của PBC-BLUEPRINT
+import type {
+  ApiResponse, PaginatedData,
+  StudentDto, CreateStudentData, UpdateStudentData,
+} from '../types';
 
-const BASE_URL = import.meta.env.VITE_STUDENT_MGMT_URL || 'http://localhost:3002';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3012';
 
-const api = axios.create({ baseURL: `${BASE_URL}/v1` });
+async function request<TResponse, TBody = unknown>(
+  method: string,
+  path: string,
+  body?: TBody,
+): Promise<TResponse> {
+  const token = localStorage.getItem('accessToken') ?? '';
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Tenant-Id': localStorage.getItem('tenantId') ?? 'default',
+    'X-Correlation-Id': crypto.randomUUID(),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
 
-export const studentApi = {
-  list: (params?: Record<string, unknown>) =>
-    api.get<FlexiblePayload<{ students: Student[]; pagination: Pagination }>>('/students', { params }),
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
+    throw new Error(err?.error?.message ?? `HTTP ${res.status}`);
+  }
 
-  getById: (id: string) =>
-    api.get<FlexiblePayload<Student>>(`/students/${id}`),
+  return res.json() as Promise<TResponse>;
+}
 
-  create: (data: Partial<Student>) =>
-    api.post<FlexiblePayload<Student>>('/students', { data, metadata: { tenantId: localStorage.getItem('tenantId') || 'dev-tenant' } }),
+function buildBody<T>(data: T) {
+  return {
+    data,
+    metadata: {
+      requestId: crypto.randomUUID(),
+      correlationId: crypto.randomUUID(),
+      tenantId: localStorage.getItem('tenantId') ?? 'default',
+    },
+  };
+}
 
-  update: (id: string, data: Partial<Student>) =>
-    api.put<FlexiblePayload<Student>>(`/students/${id}`, { data, metadata: { tenantId: localStorage.getItem('tenantId') || 'dev-tenant' } }),
+export async function listStudents(params: {
+  page?: number; pageSize?: number; search?: string; status?: string; classId?: string;
+}): Promise<ApiResponse<PaginatedData<StudentDto>>> {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+  ).toString();
+  return request<ApiResponse<PaginatedData<StudentDto>>>('GET', `/v1/students?${qs}`);
+}
 
-  remove: (id: string) =>
-    api.delete<FlexiblePayload<{ deleted: boolean }>>(`/students/${id}`),
+export async function getStudentById(studentId: string): Promise<ApiResponse<StudentDto>> {
+  return request<ApiResponse<StudentDto>>('GET', `/v1/students/${studentId}`);
+}
 
-  changeStatus: (id: string, newStatus: string) =>
-    api.patch<FlexiblePayload<Student>>(`/students/${id}/status`, { data: { newStatus }, metadata: { tenantId: localStorage.getItem('tenantId') || 'dev-tenant' } }),
+export async function createStudent(data: CreateStudentData): Promise<ApiResponse<StudentDto>> {
+  return request<ApiResponse<StudentDto>>('POST', '/v1/students', buildBody(data));
+}
 
-  exportExcel: () =>
-    api.get('/students/export', { responseType: 'blob' }),
-};
+export async function updateStudent(
+  studentId: string,
+  data: UpdateStudentData,
+): Promise<ApiResponse<StudentDto>> {
+  return request<ApiResponse<StudentDto>>('PUT', `/v1/students/${studentId}`, buildBody(data));
+}
+
+export async function deleteStudent(studentId: string): Promise<void> {
+  await request('DELETE', `/v1/students/${studentId}`);
+}

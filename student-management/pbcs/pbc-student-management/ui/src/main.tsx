@@ -1,4 +1,6 @@
-// AI-GENERATED
+// Entry point của pbc-student-management UI
+// - npm run dev  → render StandaloneApp để chạy/test độc lập
+// - npm run build → Vite build remoteEntry.js cho Module Federation (App Shell load)
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import StandaloneApp from './StandaloneApp';

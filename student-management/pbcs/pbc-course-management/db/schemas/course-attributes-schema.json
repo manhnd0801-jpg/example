@@ -1,0 +1,24 @@
+{
+  "title": "CourseAttributes",
+  "description": "Schema cho cột attributes JSON trong bảng courses",
+  "type": "object",
+  "properties": {
+    "accreditationCode": {
+      "type": "string",
+      "description": "Mã kiểm định chất lượng"
+    },
+    "language": {
+      "type": "string",
+      "description": "Ngôn ngữ giảng dạy (vi, en)"
+    },
+    "deliveryMode": {
+      "type": "string",
+      "description": "Hình thức đào tạo (on-campus, online, hybrid)"
+    },
+    "minGpa": {
+      "type": "number",
+      "description": "GPA tối thiểu để tốt nghiệp"
+    }
+  },
+  "additionalProperties": true
+}

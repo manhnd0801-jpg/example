@@ -1,5 +1,5 @@
-// Bootstrap entry — export default cho App Shell
-// Khi App Shell mount, LoginSlot sẽ redirect về /students sau khi login thành công
+// Bootstrap entry — export default cho App Shell (Module Federation)
+// App Shell load './bootstrap' để mount PBC vào login-page mount point
 import React from 'react';
 import LoginSlot from './slots/LoginSlot';
 import type { LoginResponseData } from './types';

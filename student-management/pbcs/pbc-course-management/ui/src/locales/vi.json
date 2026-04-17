@@ -1,0 +1,14 @@
+{
+  "course": {
+    "title": "Quản lý Khóa học",
+    "create": "Thêm khóa học",
+    "edit": "Sửa khóa học",
+    "delete": "Xóa khóa học",
+    "courseCode": "Mã khóa học",
+    "name": "Tên khóa học",
+    "description": "Mô tả",
+    "credits": "Số tín chỉ",
+    "status": "Trạng thái",
+    "subjects": "Môn học"
+  }
+}

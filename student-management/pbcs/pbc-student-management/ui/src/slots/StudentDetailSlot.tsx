@@ -1,42 +1,52 @@
 // AI-GENERATED
+// Slot: student-detail — hiển thị chi tiết sinh viên
 import React, { useEffect, useState } from 'react';
-import { Descriptions, Tag, Spin, message } from 'antd';
-import type { Student } from '../types';
-import { studentApi } from '../services/pbc-api';
+import { Descriptions, Tag, Spin, Card, message } from 'antd';
+import { getStudentById } from '../services/pbc-api';
+import type { StudentDto, StudentStatus } from '../types';
 
-const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'green', SUSPENDED: 'orange', GRADUATED: 'blue', DROPPED_OUT: 'red',
+const STATUS_COLOR: Record<StudentStatus, string> = {
+  ACTIVE: 'green',
+  INACTIVE: 'default',
+  GRADUATED: 'blue',
+  SUSPENDED: 'red',
 };
 
-interface Props { studentId: string; }
+interface StudentDetailSlotProps {
+  studentId?: string;
+}
 
-export default function StudentDetailSlot({ studentId }: Props) {
-  const [student, setStudent] = useState<Student | null>(null);
-  const [loading, setLoading] = useState(true);
+const StudentDetailSlot: React.FC<StudentDetailSlotProps> = ({ studentId }) => {
+  const [student, setStudent] = useState<StudentDto | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    studentApi.getById(studentId)
-      .then(res => setStudent(res.data.data))
-      .catch(() => message.error('Không thể tải thông tin sinh viên'))
+    if (!studentId) return;
+    setLoading(true);
+    getStudentById(studentId)
+      .then((res) => setStudent(res.data))
+      .catch((err) => message.error((err as Error).message))
       .finally(() => setLoading(false));
   }, [studentId]);
 
-  if (loading) return <Spin />;
-  if (!student) return <div>Không tìm thấy sinh viên</div>;
+  if (!studentId) return <div style={{ padding: 24, color: '#999' }}>Chọn một sinh viên để xem chi tiết.</div>;
+  if (loading) return <Spin style={{ display: 'block', margin: '40px auto' }} />;
+  if (!student) return <div style={{ padding: 24 }}>Không tìm thấy sinh viên.</div>;
 
   return (
-    <Descriptions bordered column={2}>
-      <Descriptions.Item label="Mã sinh viên">{student.studentCode}</Descriptions.Item>
-      <Descriptions.Item label="Họ và tên">{student.fullName}</Descriptions.Item>
-      <Descriptions.Item label="Email">{student.email}</Descriptions.Item>
-      <Descriptions.Item label="Điện thoại">{student.phone}</Descriptions.Item>
-      <Descriptions.Item label="Giới tính">{student.gender}</Descriptions.Item>
-      <Descriptions.Item label="Ngày sinh">{student.dateOfBirth}</Descriptions.Item>
-      <Descriptions.Item label="Trạng thái">
-        <Tag color={STATUS_COLORS[student.status]}>{student.status}</Tag>
-      </Descriptions.Item>
-      <Descriptions.Item label="Ngày nhập học">{student.enrollmentDate}</Descriptions.Item>
-      <Descriptions.Item label="Địa chỉ" span={2}>{student.address}</Descriptions.Item>
-    </Descriptions>
+    <Card style={{ margin: 24 }}>
+      <Descriptions bordered column={2} title="Thông tin sinh viên">
+        <Descriptions.Item label="Mã sinh viên">{student.studentCode}</Descriptions.Item>
+        <Descriptions.Item label="Họ tên">{student.fullName}</Descriptions.Item>
+        <Descriptions.Item label="Email">{student.email}</Descriptions.Item>
+        <Descriptions.Item label="Số điện thoại">{student.phone ?? '—'}</Descriptions.Item>
+        <Descriptions.Item label="Ngày sinh">{student.dateOfBirth ?? '—'}</Descriptions.Item>
+        <Descriptions.Item label="Trạng thái">
+          <Tag color={STATUS_COLOR[student.status]}>{student.status}</Tag>
+        </Descriptions.Item>
+      </Descriptions>
+    </Card>
   );
-}
+};
+
+export default StudentDetailSlot;

@@ -1,0 +1,61 @@
+/* shared/shared-ui/design-tokens/tokens.css
+   Quy tắc cho PBC:
+   ✅ Dùng: var(--color-primary), var(--pbc-primary-color)
+   ❌ Không được: override :root, không hardcode màu, không dùng Tailwind class riêng
+*/
+
+:root {
+  /* Brand Colors */
+  --color-primary:       #0d6efd;
+  --color-primary-dark:  #0a58ca;
+  --color-primary-light: #cfe2ff;
+  --color-secondary:     #6c757d;
+  --color-success:       #198754;
+  --color-warning:       #ffc107;
+  --color-danger:        #dc3545;
+
+  /* Neutral */
+  --color-bg:        #ffffff;
+  --color-bg-subtle: #f8f9fa;
+  --color-border:    #dee2e6;
+  --color-text:      #212529;
+  --color-text-muted: #6c757d;
+
+  /* Typography */
+  --font-family-base: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-size-sm:   0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg:   1.125rem;
+  --font-size-xl:   1.25rem;
+
+  /* Spacing (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* Radius */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-full: 9999px;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+
+  /* Z-index layers */
+  --z-modal:    1000;
+  --z-overlay:  900;
+  --z-navbar:   800;
+  --z-dropdown: 700;
+
+  /* Legacy aliases — backward compat với pbc-auth dùng --pbc-* */
+  --pbc-primary-color: var(--color-primary);
+  --pbc-radius:        var(--radius-md);
+  --pbc-font-family:   var(--font-family-base);
+  --pbc-auth-accent:   var(--color-primary-dark);
+  --pbc-border-radius: var(--radius-md);
+}

@@ -1,71 +1,179 @@
 {
-  "version": "1.0",
-  "pbcList": [
+  "version": "1.0.0",
+  "updatedAt": "2026-04-17T00:00:00Z",
+  "pbcs": [
     {
-      "pbcId": "pbc-auth",
+      "id": "pbc-auth",
+      "displayName": "Authentication & Authorization",
       "version": "1.0.0",
-      "remoteUrl": "http://localhost:3011/assets/remoteEntry.js",
+      "remoteEntry": "${CDN_BASE_URL}/pbc-auth/remoteEntry.js",
+      "exposedModule": "./LoginSlot",
+      "mountPath": "/login",
       "scope": "pbc_auth",
-      "module": "./bootstrap",
-      "routePrefix": "/auth",
+      "lazy": false,
+      "order": 0,
       "label": "Đăng nhập & Phân quyền",
       "icon": "UserOutlined",
-      "enabled": true
+      "requiredEvents": [],
+      "emittedEvents": [
+        "auth.user.loggedIn",
+        "auth.user.loggedOut",
+        "auth.token.refreshed",
+        "auth.user.loginFailed"
+      ],
+      "healthCheck": "${API_BASE_URL}/health",
+      "permissions": [],
+      "environments": {
+        "local": {
+          "remoteEntry": "http://localhost:3000/remotes/pbc-auth/assets/remoteEntry.js"
+        },
+        "staging": {
+          "remoteEntry": "https://cdn-staging.example.vn/pbc-auth/remoteEntry.js"
+        },
+        "production": {
+          "remoteEntry": "https://cdn.example.vn/pbc-auth/remoteEntry.js"
+        }
+      }
     },
     {
-      "pbcId": "pbc-student-management",
+      "id": "pbc-student-management",
+      "displayName": "Quản lý Sinh viên",
       "version": "1.0.0",
-      "remoteUrl": "http://localhost:3012/assets/remoteEntry.js",
+      "remoteEntry": "${CDN_BASE_URL}/pbc-student-management/remoteEntry.js",
+      "exposedModule": "./bootstrap",
+      "mountPath": "/students",
       "scope": "pbc_student_management",
-      "module": "./bootstrap",
-      "routePrefix": "/students",
+      "lazy": true,
+      "order": 1,
       "label": "Quản lý Sinh viên",
       "icon": "TeamOutlined",
-      "enabled": true
+      "requiredEvents": ["auth.user.loggedIn"],
+      "emittedEvents": ["student.selected", "student.profile.updated"],
+      "healthCheck": "${API_BASE_URL}/pbc-student-management/health",
+      "permissions": ["ROLE_ADMIN", "ROLE_ACADEMIC_STAFF", "ROLE_TEACHER"],
+      "environments": {
+        "local": {
+          "remoteEntry": "http://localhost:3000/remotes/pbc-student-management/assets/remoteEntry.js"
+        },
+        "staging": {
+          "remoteEntry": "https://cdn-staging.example.vn/pbc-student-management/remoteEntry.js"
+        },
+        "production": {
+          "remoteEntry": "https://cdn.example.vn/pbc-student-management/remoteEntry.js"
+        }
+      }
     },
     {
-      "pbcId": "pbc-class-management",
+      "id": "pbc-class-management",
+      "displayName": "Quản lý Lớp học",
       "version": "1.0.0",
-      "remoteUrl": "http://localhost:3013/assets/remoteEntry.js",
+      "remoteEntry": "${CDN_BASE_URL}/pbc-class-management/remoteEntry.js",
+      "exposedModule": "./bootstrap",
+      "mountPath": "/classes",
       "scope": "pbc_class_management",
-      "module": "./bootstrap",
-      "routePrefix": "/classes",
+      "lazy": true,
+      "order": 2,
       "label": "Quản lý Lớp học",
       "icon": "BookOutlined",
-      "enabled": true
+      "requiredEvents": ["auth.user.loggedIn"],
+      "emittedEvents": ["class.created", "class.updated", "class.deleted"],
+      "healthCheck": "${API_BASE_URL}/pbc-class-management/health",
+      "permissions": ["ROLE_ADMIN", "ROLE_ACADEMIC_STAFF"],
+      "environments": {
+        "local": {
+          "remoteEntry": "http://localhost:3000/remotes/pbc-class-management/assets/remoteEntry.js"
+        },
+        "staging": {
+          "remoteEntry": "https://cdn-staging.example.vn/pbc-class-management/remoteEntry.js"
+        },
+        "production": {
+          "remoteEntry": "https://cdn.example.vn/pbc-class-management/remoteEntry.js"
+        }
+      }
     },
     {
-      "pbcId": "pbc-course-management",
+      "id": "pbc-course-management",
+      "displayName": "Quản lý Khóa học",
       "version": "1.0.0",
-      "remoteUrl": "http://localhost:3014/assets/remoteEntry.js",
+      "remoteEntry": "${CDN_BASE_URL}/pbc-course-management/remoteEntry.js",
+      "exposedModule": "./bootstrap",
+      "mountPath": "/courses",
       "scope": "pbc_course_management",
-      "module": "./bootstrap",
-      "routePrefix": "/courses",
+      "lazy": true,
+      "order": 3,
       "label": "Quản lý Khóa học",
       "icon": "ReadOutlined",
-      "enabled": true
+      "requiredEvents": ["auth.user.loggedIn"],
+      "emittedEvents": ["course.created", "course.updated", "course.deleted"],
+      "healthCheck": "${API_BASE_URL}/pbc-course-management/health",
+      "permissions": ["ROLE_ADMIN", "ROLE_ACADEMIC_STAFF", "ROLE_TEACHER"],
+      "environments": {
+        "local": {
+          "remoteEntry": "http://localhost:3000/remotes/pbc-course-management/assets/remoteEntry.js"
+        },
+        "staging": {
+          "remoteEntry": "https://cdn-staging.example.vn/pbc-course-management/remoteEntry.js"
+        },
+        "production": {
+          "remoteEntry": "https://cdn.example.vn/pbc-course-management/remoteEntry.js"
+        }
+      }
     },
     {
-      "pbcId": "pbc-subject-management",
+      "id": "pbc-subject-management",
+      "displayName": "Quản lý Môn học",
       "version": "1.0.0",
-      "remoteUrl": "http://localhost:3015/assets/remoteEntry.js",
+      "remoteEntry": "${CDN_BASE_URL}/pbc-subject-management/remoteEntry.js",
+      "exposedModule": "./bootstrap",
+      "mountPath": "/subjects",
       "scope": "pbc_subject_management",
-      "module": "./bootstrap",
-      "routePrefix": "/subjects",
+      "lazy": true,
+      "order": 4,
       "label": "Quản lý Môn học",
       "icon": "FileTextOutlined",
-      "enabled": true
+      "requiredEvents": ["auth.user.loggedIn"],
+      "emittedEvents": ["subject.created", "subject.updated", "subject.deleted"],
+      "healthCheck": "${API_BASE_URL}/pbc-subject-management/health",
+      "permissions": ["ROLE_ADMIN", "ROLE_ACADEMIC_STAFF"],
+      "environments": {
+        "local": {
+          "remoteEntry": "http://localhost:3000/remotes/pbc-subject-management/assets/remoteEntry.js"
+        },
+        "staging": {
+          "remoteEntry": "https://cdn-staging.example.vn/pbc-subject-management/remoteEntry.js"
+        },
+        "production": {
+          "remoteEntry": "https://cdn.example.vn/pbc-subject-management/remoteEntry.js"
+        }
+      }
     },
     {
-      "pbcId": "pbc-notification",
+      "id": "pbc-notification",
+      "displayName": "Thông báo",
       "version": "1.0.0",
-      "remoteUrl": "http://localhost:3016/assets/remoteEntry.js",
+      "remoteEntry": "${CDN_BASE_URL}/pbc-notification/remoteEntry.js",
+      "exposedModule": "./bootstrap",
+      "mountPath": "/notifications",
       "scope": "pbc_notification",
-      "module": "./bootstrap",
-      "routePrefix": "/notifications",
+      "lazy": true,
+      "order": 5,
       "label": "Thông báo",
       "icon": "BellOutlined",
-      "enabled": true
+      "requiredEvents": ["auth.user.loggedIn", "notification.triggered"],
+      "emittedEvents": ["notification.read", "notification.dismissed"],
+      "healthCheck": "${API_BASE_URL}/pbc-notification/health",
+      "permissions": [],
+      "environments": {
+        "local": {
+          "remoteEntry": "http://localhost:3000/remotes/pbc-notification/assets/remoteEntry.js"
+        },
+        "staging": {
+          "remoteEntry": "https://cdn-staging.example.vn/pbc-notification/remoteEntry.js"
+        },
+        "production": {
+          "remoteEntry": "https://cdn.example.vn/pbc-notification/remoteEntry.js"
+        }
+      }
     }
   ]
 }

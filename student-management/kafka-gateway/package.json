@@ -1,0 +1,19 @@
+{
+  "name": "@student-management/kafka-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "kafkajs": "2.2.4",
+    "ws": "8.17.0"
+  },
+  "devDependencies": {
+    "@types/ws": "8.5.10",
+    "typescript": "5.4.5",
+    "ts-node-dev": "2.0.0"
+  }
+}

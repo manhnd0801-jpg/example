@@ -1,10 +1,9 @@
-/* AI-GENERATED */
+/* Design tokens cho pbc-student-management — đọc từ App Shell qua CSS variables */
+/* R-10: Không override :root — chỉ dùng var(--color-*) từ App Shell */
 :root {
-  --pbc-primary-color: #1677ff;
-  --pbc-student-accent: #52c41a;
-  --pbc-border-radius: 6px;
-  --pbc-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --pbc-spacing-xs: 4px;
+  --pbc-primary-color: #0d6efd;
+  --pbc-border-radius: 8px;
+  --pbc-font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --pbc-spacing-sm: 8px;
   --pbc-spacing-md: 16px;
   --pbc-spacing-lg: 24px;

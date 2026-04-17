@@ -1,10 +1,11 @@
 # VNPT COMPOSABLE APP BLUEPRINT (AI Generation Template)
 
-**Phiên bản:** 2.9
+**Phiên bản:** 3.0
 **Nền tảng:** VNPT Composable Platform (App Composition Layer)
 
 > **Đây là file blueprint chính thức** — thay thế APP-BLUEPRINT.md (v2.7).  
-> v2.9 bổ sung các bài học từ thực tế triển khai pbc-auth + app-shell integration.
+> v2.9 bổ sung các bài học từ thực tế triển khai pbc-auth + app-shell integration.  
+> v3.0 bổ sung `enabledSlots` pattern — config-driven slot mounting, `MountPoint` component, `slot-registry.ts`, `vite-env.d.ts`.
 
 ## MỤC LỤC
 
@@ -12,9 +13,11 @@
 - Cấu trúc thư mục đầy đủ
 - app-manifest.json
 - pbc-registry.json
+- **app-wiring.json (Mới v3.1)** ← Event wiring graph
 - App Shell — Core
 - App Shell — Config
 - App Shell — Layout
+- **enabledSlots Pattern (Mới v3.0)**
 - Kafka Gateway (Mới v2.8)
 - Shared — shared-events
 - Shared — shared-ui / DesignTokenProvider
@@ -45,6 +48,13 @@
 | R-13  | `app-shell/` phải có `index.html` trỏ vào `src/main.tsx` và `tsconfig.json` — thiếu hai file này Vite không build được | Build requirement |
 | R-14  | `security.authPBC` trong `app-contract.json` phải khớp đúng `pbcId` trong `pbc-registry.json` (không phải tên thư mục hay tên service) | Consistency |
 | R-15  | Route `/login` phải được khai trong `security.publicRoutes` và có entry trong `pbc-registry.json` với `pbcId` của auth PBC | Auth flow |
+| R-16  | `app-shell/src/` phải có `vite-env.d.ts` khai báo `ImportMetaEnv` — thiếu file này TypeScript báo lỗi `Property 'env' does not exist on type 'ImportMeta'` | Type safety |
+| R-17  | Shell.tsx **không được** hard-code tên slot hay PBC cụ thể — dùng `MountPoint` component đọc config từ `app-contract.json.includedPBCs[].enabledSlots` | Config-driven layout |
+| R-18  | `remote-imports.ts` phải có literal import string cho **mọi slot** được khai trong `enabledSlots` — Vite Module Federation không thể dynamic import lúc build | Build requirement |
+| R-19  | `app-wiring.json` là **nguồn sự thật duy nhất** cho event wiring giữa các PBC — Platform UI đọc/ghi file này; `event-mapping.config.ts` và `app-asyncapi.yaml` là **output** được codegen từ `app-wiring.json`, không phải ngược lại | Single source of truth |
+| R-20  | Khi thêm PBC vào project, platform phải **auto-detect** các event khớp giữa `emittedEvents` của PBC mới và `requiredEvents` của các PBC đã có (và ngược lại), tự động tạo edge trong `app-wiring.json` với `autoWired: true` — user chỉ cần confirm hoặc thêm transform | Auto-wiring |
+| R-21  | App Shell phải gắn `window.__PLATFORM__` (Platform Standard API) trước khi mount bất kỳ PBC nào — PBC từ marketplace đọc session/eventBus từ đây, không import từ app-shell | Platform Contract |
+| R-22  | PBC từ marketplace **KHÔNG được** import từ app-shell hoặc shared package của host cụ thể — chỉ được: (1) nhận props, (2) đọc `window.__PLATFORM__`, (3) phát/nhận CustomEvent qua window | Marketplace compatibility |
 
 ## 2. CẤU TRÚC THƯ MỤC ĐẦY ĐỦ
 
@@ -58,7 +68,10 @@ my-composed-app/
 │   │   │   ├── pbc-loader.ts             # Dynamic load PBC (Module Federation)
 │   │   │   ├── auth-guard.ts             # Bảo vệ route
 │   │   │   ├── token-manager.ts          # Quản lý JWT
-│   │   │   └── session-context.tsx       # React Context chia sẻ session
+│   │   │   ├── session-context.tsx       # React Context chia sẻ session
+│   │   │   ├── slot-registry.ts          # ← MỚI v3.0: Đọc enabledSlots từ app-contract
+│   │   │   ├── MountPoint.tsx            # ← MỚI v3.0: Render slot theo mount point
+│   │   │   └── remote-imports.ts         # Literal import strings cho Vite MF
 │   │   ├── layout/
 │   │   │   ├── Shell.tsx
 │   │   │   ├── Navbar.tsx
@@ -71,6 +84,7 @@ my-composed-app/
 │   │   │   ├── event-mapping.config.ts   # Khai báo event mapping rules
 │   │   │   ├── feature-flags.ts          # Bật/tắt PBC theo môi trường
 │   │   │   └── env.ts                    # Environment variables wrapper
+│   │   ├── vite-env.d.ts                 # ← MỚI v3.0: Khai báo ImportMetaEnv
 │   │   └── main.tsx
 │   ├── public/
 │   ├── vite.config.ts                    # Module Federation config
@@ -114,7 +128,9 @@ my-composed-app/
 ├── docker-compose.yml                   # Kafka (KRaft) + kafka-gateway + App Shell + PBCs
 ├── .gitlab-ci.yml
 ├── app-manifest.json
+├── app-contract.json                    # enabledSlots config — đọc bởi slot-registry.ts
 ├── pbc-registry.json
+├── app-wiring.json                      # ← MỚI v3.1: Event wiring graph — sinh ngay khi tạo project (skeleton rỗng), populate khi kéo PBC vào
 ├── README.md
 └── .gitignore
 ```
@@ -285,6 +301,321 @@ _Cập nhật v2.8: Thêm versionContract cho từng PBC, thêm security block._
 }
 ```
 
+## 4A. APP-WIRING.JSON (MỚI v3.1)
+
+**Vai trò:** Nguồn sự thật duy nhất cho event wiring graph — Platform UI (tab Wiring) đọc/ghi file này.
+
+**Vòng đời:**
+- **Khi tạo project**: sinh skeleton rỗng (`nodes: [], edges: []`) — tab Wiring render canvas trống, sẵn sàng nhận PBC.
+- **Khi kéo PBC đầu tiên vào**: thêm node vào `nodes[]`, `edges[]` vẫn rỗng (chưa có PBC nào để nối).
+- **Khi kéo PBC thứ 2+ vào**: thêm node mới + auto-detect edges → hiển thị popup confirm → thêm edges được chấp nhận.
+- **Khi user kéo dây thủ công / sửa transform / toggle edge**: cập nhật `edges[]` → trigger codegen output ngay.
+
+**Quan hệ với các file khác:**
+- `app-wiring.json` → **INPUT** (user chỉnh sửa qua UI)
+- `event-mapping.config.ts` → **OUTPUT** (codegen từ `app-wiring.json.edges[]`)
+- `app-asyncapi.yaml` → **OUTPUT** (codegen từ `app-wiring.json.edges[]`)
+- `kafka-gateway/topic-registry.ts` → **OUTPUT** (codegen từ `app-wiring.json.edges[]`)
+
+### 4A.1 Schema đầy đủ
+
+**Skeleton khi tạo project (chưa có PBC):**
+
+```json
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-04-17T10:00:00Z",
+  "metadata": {
+    "appId": "my-app",
+    "totalNodes": 0,
+    "totalEdges": 0,
+    "autoWiredEdges": 0
+  },
+  "nodes": [],
+  "edges": []
+}
+```
+
+**Schema đầy đủ (sau khi đã kéo PBC và wire events):**
+
+```json
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-04-17T10:30:00Z",
+  "metadata": {
+    "appId": "student-management",
+    "totalNodes": 6,
+    "totalEdges": 12,
+    "autoWiredEdges": 8
+  },
+
+  "nodes": [
+    {
+      "pbcId": "pbc-auth",
+      "displayName": "Authentication & Authorization",
+      "position": { "x": 520, "y": 100 },
+      "ports": {
+        "emits": [
+          { "id": "AUTH:USER_LOGGED_IN",  "topic": "pbc.auth.user.logged-in",  "label": "User Logged In" },
+          { "id": "AUTH:USER_LOGGED_OUT", "topic": "pbc.auth.user.logged-out", "label": "User Logged Out" },
+          { "id": "AUTH:USER_CREATED",    "topic": "pbc.auth.user.created",    "label": "User Created" }
+        ],
+        "listens": []
+      }
+    },
+    {
+      "pbcId": "pbc-student-management",
+      "displayName": "Quản lý Sinh viên",
+      "position": { "x": 200, "y": 300 },
+      "ports": {
+        "emits": [
+          { "id": "STUDENT:CREATED", "topic": "pbc.student-management.student.created", "label": "Student Created" },
+          { "id": "STUDENT:UPDATED", "topic": "pbc.student-management.student.updated", "label": "Student Updated" },
+          { "id": "STUDENT:DELETED", "topic": "pbc.student-management.student.deleted", "label": "Student Deleted" }
+        ],
+        "listens": [
+          { "id": "AUTH:USER_CREATED",    "topic": "pbc.auth.user.created",                        "label": "User Created" },
+          { "id": "CLASS:STUDENT_ASSIGNED", "topic": "pbc.class-management.student.assigned-to-class", "label": "Student Assigned to Class" }
+        ]
+      }
+    },
+    {
+      "pbcId": "pbc-class-management",
+      "displayName": "Quản lý Lớp học",
+      "position": { "x": 200, "y": 500 },
+      "ports": {
+        "emits": [
+          { "id": "CLASS:CREATED",          "topic": "pbc.class-management.class.created",              "label": "Class Created" },
+          { "id": "CLASS:STUDENT_ASSIGNED", "topic": "pbc.class-management.student.assigned-to-class", "label": "Student Assigned" }
+        ],
+        "listens": [
+          { "id": "STUDENT:CREATED", "topic": "pbc.student-management.student.created", "label": "Student Created" }
+        ]
+      }
+    },
+    {
+      "pbcId": "pbc-notification",
+      "displayName": "Thông báo",
+      "position": { "x": 700, "y": 400 },
+      "ports": {
+        "emits": [],
+        "listens": [
+          { "id": "AUTH:USER_LOGGED_IN", "topic": "pbc.auth.user.logged-in",                   "label": "User Logged In" },
+          { "id": "AUTH:USER_CREATED",   "topic": "pbc.auth.user.created",                     "label": "User Created" },
+          { "id": "STUDENT:CREATED",     "topic": "pbc.student-management.student.created",    "label": "Student Created" },
+          { "id": "CLASS:CREATED",       "topic": "pbc.class-management.class.created",        "label": "Class Created" }
+        ]
+      }
+    }
+  ],
+
+  "edges": [
+    {
+      "id": "edge-001",
+      "source": { "pbcId": "pbc-auth",               "portId": "AUTH:USER_CREATED" },
+      "target": { "pbcId": "pbc-student-management", "portId": "AUTH:USER_CREATED" },
+      "transform": {
+        "type": "pick",
+        "fields": ["userId", "tenantId"]
+      },
+      "enabled": true,
+      "autoWired": true,
+      "description": "Liên kết tài khoản với hồ sơ sinh viên khi tạo user mới"
+    },
+    {
+      "id": "edge-002",
+      "source": { "pbcId": "pbc-auth",        "portId": "AUTH:USER_LOGGED_IN" },
+      "target": { "pbcId": "pbc-notification", "portId": "AUTH:USER_LOGGED_IN" },
+      "transform": null,
+      "enabled": true,
+      "autoWired": true,
+      "description": "Gửi thông báo chào mừng khi user đăng nhập"
+    },
+    {
+      "id": "edge-003",
+      "source": { "pbcId": "pbc-student-management", "portId": "STUDENT:CREATED" },
+      "target": { "pbcId": "pbc-notification",        "portId": "STUDENT:CREATED" },
+      "transform": null,
+      "enabled": true,
+      "autoWired": true,
+      "description": "Thông báo khi sinh viên mới được tạo"
+    },
+    {
+      "id": "edge-004",
+      "source": { "pbcId": "pbc-class-management",   "portId": "CLASS:STUDENT_ASSIGNED" },
+      "target": { "pbcId": "pbc-student-management", "portId": "CLASS:STUDENT_ASSIGNED" },
+      "transform": {
+        "type": "pick",
+        "fields": ["classId", "studentId"]
+      },
+      "enabled": true,
+      "autoWired": false,
+      "description": "Cập nhật classId sinh viên khi được gán vào lớp"
+    }
+  ]
+}
+```
+
+### 4A.2 Giải thích các field
+
+**`nodes[]`** — Danh sách PBC trên canvas:
+- `pbcId`: ID PBC, khớp với `pbc-registry.json.pbcs[].id`
+- `displayName`: Tên hiển thị trên UI
+- `position`: Tọa độ x,y trên canvas (pixel) — lưu để restore layout khi mở lại
+- `ports.emits[]`: Danh sách event mà PBC này **phát ra** (đọc từ `pbc-registry.json.emittedEvents`)
+- `ports.listens[]`: Danh sách event mà PBC này **lắng nghe** (đọc từ `pbc-registry.json.requiredEvents`)
+- `ports[].id`: ID port duy nhất trong node (dạng `DOMAIN:EVENT_NAME`)
+- `ports[].topic`: Kafka topic thực tế (khớp với `asyncapi.yaml` của PBC)
+- `ports[].label`: Label hiển thị trên UI
+
+**`edges[]`** — Danh sách kết nối giữa các PBC:
+- `id`: ID edge duy nhất (auto-gen: `edge-001`, `edge-002`, ...)
+- `source.pbcId` + `source.portId`: PBC nguồn + port phát event
+- `target.pbcId` + `target.portId`: PBC đích + port nhận event
+- `transform`: Cách biến đổi payload trước khi gửi đến target
+  - `type: "pick"` → chỉ lấy một số field
+  - `type: "map"` → map field này sang field khác (JSONPath)
+  - `type: "custom"` → custom function (lưu dạng string, eval runtime)
+  - `null` → không transform, forward nguyên payload
+- `enabled`: `false` = tắt edge này (không codegen vào `event-mapping.config.ts`)
+- `autoWired`: `true` = edge này được platform tự động tạo khi detect khớp topic
+- `description`: Mô tả nghiệp vụ của edge
+
+### 4A.3 Luồng đọc/ghi
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  PLATFORM UI (Tab Wiring)                                               │
+│                                                                         │
+│  READ khi mở tab:                                                       │
+│    app-wiring.json → render node graph + edges                          │
+│                                                                         │
+│  READ để populate ports:                                                │
+│    pbc-registry.json.pbcs[].emittedEvents → ports.emits[]              │
+│    pbc-registry.json.pbcs[].requiredEvents → ports.listens[]           │
+│                                                                         │
+│  WRITE khi user thao tác:                                               │
+│    - Kéo node → cập nhật nodes[].position                              │
+│    - Kéo dây nối → thêm edge mới vào edges[]                           │
+│    - Ngắt dây → xóa edge khỏi edges[]                                  │
+│    - Sửa transform → cập nhật edges[].transform                        │
+│    - Toggle enabled → cập nhật edges[].enabled                         │
+│                                                                         │
+│  Sau mỗi thay đổi → trigger codegen ngay                               │
+└─────────────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  CODEGEN ENGINE                                                     │
+  │                                                                     │
+  │  Input: app-wiring.json.edges[]                                     │
+  │                                                                     │
+  │  Output:                                                            │
+  │    1. event-mapping.config.ts                                       │
+  │       EVENT_MAPPING = edges.filter(e => e.enabled).map(...)        │
+  │                                                                     │
+  │    2. app-asyncapi.yaml                                             │
+  │       channels: từ edges[] → khai báo subscribe/publish            │
+  │                                                                     │
+  │    3. kafka-gateway/topic-registry.ts                               │
+  │       ALLOWED_TOPICS = unique topics từ edges[]                    │
+  └─────────────────────────────────────────────────────────────────────┘
+```
+
+### 4A.4 Auto-wiring logic (R-20)
+
+Khi user kéo PBC mới vào canvas, platform chạy thuật toán auto-detect:
+
+```typescript
+// Pseudo-code
+function autoWireNewPBC(newPBC: PBCConfig, existingPBCs: PBCConfig[]): Edge[] {
+  const autoEdges: Edge[] = [];
+
+  // Case 1: newPBC emits event mà existingPBC listens
+  for (const emittedEvent of newPBC.emittedEvents) {
+    for (const existingPBC of existingPBCs) {
+      if (existingPBC.requiredEvents.includes(emittedEvent)) {
+        autoEdges.push({
+          id: generateEdgeId(),
+          source: { pbcId: newPBC.id, portId: toPortId(emittedEvent) },
+          target: { pbcId: existingPBC.id, portId: toPortId(emittedEvent) },
+          transform: null,
+          enabled: true,
+          autoWired: true,
+          description: `Auto-wired: ${newPBC.id} → ${existingPBC.id}`
+        });
+      }
+    }
+  }
+
+  // Case 2: existingPBC emits event mà newPBC listens
+  for (const existingPBC of existingPBCs) {
+    for (const emittedEvent of existingPBC.emittedEvents) {
+      if (newPBC.requiredEvents.includes(emittedEvent)) {
+        autoEdges.push({
+          id: generateEdgeId(),
+          source: { pbcId: existingPBC.id, portId: toPortId(emittedEvent) },
+          target: { pbcId: newPBC.id, portId: toPortId(emittedEvent) },
+          transform: null,
+          enabled: true,
+          autoWired: true,
+          description: `Auto-wired: ${existingPBC.id} → ${newPBC.id}`
+        });
+      }
+    }
+  }
+
+  return autoEdges;
+}
+```
+
+Platform hiển thị popup confirm với danh sách auto-wired edges, user có thể:
+- ✅ Chấp nhận tất cả
+- ✏️ Thêm transform cho từng edge
+- ❌ Bỏ qua một số edge
+
+### 4A.5 Transform types
+
+**`type: "pick"`** — Chỉ lấy một số field:
+```json
+{
+  "type": "pick",
+  "fields": ["userId", "tenantId"]
+}
+```
+→ Codegen thành: `transform: (p) => ({ userId: p.userId, tenantId: p.tenantId })`
+
+**`type: "map"`** — Map field này sang field khác:
+```json
+{
+  "type": "map",
+  "mapping": {
+    "userId": "$.studentId",
+    "title": "Sinh viên mới được tạo",
+    "body": "$.fullName",
+    "type": "info"
+  }
+}
+```
+→ Codegen thành: `transform: (p) => ({ userId: p.studentId, title: "Sinh viên mới được tạo", body: p.fullName, type: "info" })`
+
+**`type: "custom"`** — Custom function (lưu dạng string):
+```json
+{
+  "type": "custom",
+  "code": "(payload) => ({ ...payload, timestamp: Date.now() })"
+}
+```
+→ Codegen thành: `transform: (payload) => ({ ...payload, timestamp: Date.now() })`
+
+**`null`** — Không transform:
+```json
+{
+  "transform": null
+}
+```
+→ Codegen thành: `transform: undefined` (hoặc không có field `transform`)
+
 ## 5. APP SHELL — CORE
 
 ℹ️ Kafka Architecture Note:
@@ -317,7 +648,7 @@ let isConnected = false;
 const subscriptions = new Map<string, Set<MessageHandler>>();
 const pendingPublish: GatewayMessage[] = []; // Buffer khi chưa connect
 
-// ── Subscription Handle (tương đương nats Subscription) ────────────────────
+// ── Subscription Handle ────────────────────────────────────────────────────
 export interface Subscription {
   unsubscribe: () => void;
 }
@@ -839,7 +1170,263 @@ export default function Shell() {
 }
 ```
 
-## 8. KAFKA GATEWAY
+## 8. ENABLEDSLOTS PATTERN (MỚI v3.0)
+
+### Vấn đề với cách cũ
+
+Shell.tsx hard-code từng slot:
+```tsx
+// ❌ Cách cũ — phải sửa Shell.tsx mỗi khi thêm PBC
+const LazyProfileSlot = lazy(() => importFromRemote(authEntry, "./ProfileSlot"));
+if (isProfile) return <LazyProfileSlot />;
+if (isUserMgmt) return <LazyUserManagement />;
+```
+
+Mỗi lần thêm PBC mới phải vào sửa Shell.tsx — vi phạm R-04 và R-17.
+
+### Giải pháp: Config-driven slot mounting
+
+**Khai báo slots trong `app-contract.json`:**
+
+```json
+{
+  "includedPBCs": [
+    {
+      "pbcId": "pbc-auth",
+      "version": "0.1.0",
+      "enabledSlots": [
+        {
+          "slotName": "LoginSlot",
+          "mountPoint": "login-page",
+          "visible": true,
+          "order": 0
+        },
+        {
+          "slotName": "ProfileSlot",
+          "mountPoint": "main-content",
+          "visible": true,
+          "order": 0,
+          "routeMatch": "/profile"
+        },
+        {
+          "slotName": "UserManagementSlot",
+          "mountPoint": "main-content",
+          "visible": true,
+          "order": 0,
+          "routeMatch": "/user-management",
+          "requiredRoles": ["ADMIN", "ACADEMIC_STAFF"]
+        }
+      ]
+    },
+    {
+      "pbcId": "pbc-student-profile",
+      "version": "1.0.0",
+      "enabledSlots": [
+        {
+          "slotName": "bootstrap",
+          "mountPoint": "main-content",
+          "visible": true,
+          "order": 1,
+          "routeMatch": "/students"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Các field của `enabledSlots[]`:**
+
+| Field | Bắt buộc | Mô tả |
+|---|---|---|
+| `slotName` | ✅ | Tên exposed module trong vite.config của PBC (không có `./`) |
+| `mountPoint` | ✅ | ID của `<MountPoint>` trong layout Shell |
+| `visible` | ✅ | `false` = ẩn mặc định, chờ `triggerEvent` |
+| `order` | ✅ | Thứ tự render khi nhiều slot cùng mount point |
+| `routeMatch` | ❌ | Chỉ render khi `pathname.startsWith(routeMatch)` |
+| `triggerEvent` | ❌ | Tên event để lazy-activate slot (visible: false → true) |
+| `requiredRoles` | ❌ | Chỉ render nếu user có ít nhất 1 role trong danh sách |
+
+### 8.1 slot-registry.ts
+
+```typescript
+// app-shell/src/core/slot-registry.ts
+import contract from "../../../app-contract.json";
+import registry from "../../../pbc-registry.json";
+
+export interface SlotConfig {
+  pbcId: string;
+  slotName: string;
+  mountPoint: string;
+  visible: boolean;
+  order: number;
+  routeMatch?: string;
+  triggerEvent?: string;
+  requiredRoles?: string[];
+}
+
+export function getAllSlots(): SlotConfig[] {
+  return contract.includedPBCs.flatMap((pbc) =>
+    (pbc.enabledSlots ?? []).map((slot) => ({
+      pbcId:         pbc.pbcId,
+      slotName:      slot.slotName,
+      mountPoint:    slot.mountPoint,
+      visible:       slot.visible,
+      order:         slot.order ?? 0,
+      routeMatch:    (slot as { routeMatch?: string }).routeMatch,
+      triggerEvent:  (slot as { triggerEvent?: string }).triggerEvent,
+      requiredRoles: (slot as { requiredRoles?: string[] }).requiredRoles,
+    })),
+  );
+}
+
+export function getSlotsForMountPoint(
+  mountPoint: string,
+  pathname: string,
+  userRoles: string[] = [],
+): SlotConfig[] {
+  return getAllSlots()
+    .filter((s) => {
+      if (s.mountPoint !== mountPoint) return false;
+      if (!s.visible) return false;
+      if (s.routeMatch && !pathname.startsWith(s.routeMatch)) return false;
+      if (s.requiredRoles?.length) {
+        if (!s.requiredRoles.some((r) => userRoles.includes(r))) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => a.order - b.order);
+}
+
+export function getScopeForPBC(pbcId: string): string | undefined {
+  return registry.pbcs.find((p) => p.id === pbcId)?.scope;
+}
+```
+
+### 8.2 MountPoint.tsx
+
+```tsx
+// app-shell/src/core/MountPoint.tsx
+import React, { Suspense, lazy, useState, useEffect } from "react";
+import { Spin } from "antd";
+import { getSlotsForMountPoint, getScopeForPBC } from "./slot-registry";
+import { importFromRemote, getEnabledPBCs } from "./pbc-loader";
+import { subscribe } from "./event-bus";
+import { useSession } from "./session-context";
+import type { SlotConfig } from "./slot-registry";
+
+function SlotRenderer({ slot, slotProps }: { slot: SlotConfig; slotProps?: Record<string, unknown> }) {
+  const [visible, setVisible] = useState(slot.visible);
+
+  useEffect(() => {
+    if (!slot.triggerEvent) return;
+    const sub = subscribe(slot.triggerEvent, () => setVisible(true));
+    return () => sub.unsubscribe();
+  }, [slot.triggerEvent]);
+
+  if (!visible) return null;
+
+  const entry = getEnabledPBCs().find((p) => p.pbcId === slot.pbcId);
+  if (!entry) return null;
+
+  const LazySlot = lazy(() =>
+    importFromRemote<React.ComponentType<Record<string, unknown>>>(
+      entry, `./${slot.slotName}`
+    ).then((C) => ({ default: C }))
+  );
+
+  return (
+    <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", padding: 40 }}><Spin size="large" /></div>}>
+      <LazySlot {...(slotProps ?? {})} />
+    </Suspense>
+  );
+}
+
+export const MountPoint: React.FC<{ id: string; slotProps?: Record<string, unknown> }> = ({ id, slotProps }) => {
+  const { roles } = useSession();
+  const pathname = window.location.pathname;
+  const slots = getSlotsForMountPoint(id, pathname, roles);
+  if (slots.length === 0) return null;
+  return (
+    <>
+      {slots.map((slot) => (
+        <SlotRenderer key={`${slot.pbcId}/${slot.slotName}`} slot={slot} slotProps={slotProps} />
+      ))}
+    </>
+  );
+};
+```
+
+### 8.3 Shell.tsx — không còn hard-code slot
+
+```tsx
+// app-shell/src/layout/Shell.tsx — chỉ đặt <MountPoint>, không biết PBC cụ thể
+export const ShellInner: React.FC = ({ children }) => {
+  const hasMatchingSlot = getAllSlots().some(
+    (s) => s.mountPoint === "main-content" && s.visible &&
+           s.routeMatch && pathname.startsWith(s.routeMatch)
+  );
+
+  return (
+    <Layout>
+      <Sider>...</Sider>
+      <Content>
+        {hasMatchingSlot ? (
+          <MountPoint id="main-content" />   {/* ← đọc từ app-contract */}
+        ) : (
+          children                           {/* ← Dashboard fallback */}
+        )}
+      </Content>
+    </Layout>
+  );
+};
+```
+
+### 8.4 Quy tắc khi thêm PBC mới (R-17, R-18)
+
+Khi thêm `pbc-xyz` với slot `XyzSlot`:
+
+1. Thêm vào `app-contract.json.includedPBCs`:
+```json
+{
+  "pbcId": "pbc-xyz",
+  "version": "1.0.0",
+  "enabledSlots": [
+    { "slotName": "XyzSlot", "mountPoint": "main-content", "visible": true, "order": 5, "routeMatch": "/xyz" }
+  ]
+}
+```
+
+2. Thêm literal import vào `remote-imports.ts` (R-18 — bắt buộc):
+```typescript
+export const REMOTE_IMPORT_MAP = {
+  // ... existing
+  "pbc_xyz/XyzSlot": () => import("pbc_xyz/XyzSlot").then((m) => m.default ?? m),
+};
+```
+
+3. Thêm remote vào `vite.config.ts`:
+```typescript
+federation({
+  remotes: {
+    pbc_xyz: "http://localhost:3015/assets/remoteEntry.js",
+  }
+})
+```
+
+**Không cần sửa Shell.tsx.** MountPoint tự đọc config và render.
+
+### 8.5 Mount Points chuẩn
+
+| Mount Point ID | Vị trí trong layout | Dùng cho |
+|---|---|---|
+| `login-page` | Full page, không có Shell | LoginSlot của auth PBC |
+| `main-content` | Content area trong Shell | Slot chính của PBC nghiệp vụ |
+| `toolbar` | Thanh công cụ trên content | ActionBar, filter slots |
+| `modal` | Modal overlay | Form slots, detail slots |
+| `sidebar-widget` | Widget trong sidebar | Quick stats, shortcuts |
+
+## 10. KAFKA GATEWAY
 
 Vai trò: Node.js service làm cầu nối giữa browser (WebSocket) và Kafka Broker (kafkajs).
 Chạy như một service độc lập trong docker-compose và Kubernetes.
@@ -1079,7 +1666,7 @@ export const ALLOWED_TOPICS: string[] = [
 }
 ```
 
-## 9. SHARED — SHARED-EVENTS
+## 11. SHARED — SHARED-EVENTS
 
 ```typescript
 // shared/shared-events/index.ts
@@ -1162,7 +1749,7 @@ export interface EventNotificationTriggered {
 
 ```typescript
 // shared/shared-events/event-contracts.ts
-// Dùng Zod để validate payload runtime — đặc biệt hữu ích khi nhận từ NATS
+// Dùng Zod để validate payload runtime — đặc biệt hữu ích khi nhận từ Kafka
 
 import { z } from "zod";
 
@@ -1197,7 +1784,7 @@ export function validateEvent<T>(schema: z.ZodSchema<T>, payload: unknown): T {
 }
 ```
 
-## 10. SHARED — SHARED-UI / DESIGNTOKENPROVIDER
+## 12. SHARED — SHARED-UI / DESIGNTOKENPROVIDER
 
 ### 10.1 tokens.css — Chuẩn CSS Variables
 
@@ -1295,7 +1882,7 @@ export function DesignTokenProvider({ children }: Props) {
 }
 ```
 
-## 11. DOCKER-COMPOSE.YML
+## 13. DOCKER-COMPOSE.YML
 
 ```yaml
 # docker-compose.yml
@@ -1473,7 +2060,7 @@ networks:
     name: crm-network
 ```
 
-## 12. CI/CD — .GITLAB-CI.YML
+## 14. CI/CD — .GITLAB-CI.YML
 
 ```yaml
 # .gitlab-ci.yml
@@ -1636,7 +2223,7 @@ notify-pbc-teams-failure:
   only: [main, develop]
 ```
 
-## 13. INFRA — HELM CHART
+## 15. INFRA — HELM CHART
 
 ### 13.1 Chart.yaml
 
@@ -1670,7 +2257,7 @@ ingress:
   host: crm.vnpt.vn
   tls: true
 
-# Kafka config (thay thế NATS)
+# Kafka config
 kafka:
   brokers:
     - "kafka-broker-1:9092"
@@ -1704,7 +2291,7 @@ autoscaling:
   targetCPUUtilizationPercentage: 70
 ```
 
-## 14. QUY ƯỚC ĐẶT TÊN & VERSIONING
+## 16. QUY ƯỚC ĐẶT TÊN & VERSIONING
 
 ### 14.1 Event Naming Convention
 
@@ -1743,7 +2330,7 @@ Quy tắc bắt buộc:
 | Kafka UI Monitor             | 8080 |
 | API Gateway                  | 8090 |
 
-## 15. BÀI HỌC TỪ THỰC TẾ TRIỂN KHAI (v2.9)
+## 17. BÀI HỌC TỪ THỰC TẾ TRIỂN KHAI (v3.0)
 
 Những vấn đề phát sinh khi tích hợp pbc-auth vào app-shell và cách xử lý:
 
@@ -1821,3 +2408,36 @@ Khi thêm một PBC mới vào App Shell, AI phải thực hiện đủ các bư
 - [ ] Cập nhật `security.authPBC` nếu đây là PBC xác thực
 - [ ] Kiểm tra port conflict với tất cả PBC đang chạy
 - [ ] Verify `pbcId` trong registry khớp với `pbcId` trong `pbc-contract.json` của PBC
+
+### 17.8 vite-env.d.ts bắt buộc (v3.0)
+
+**Vấn đề:** TypeScript báo lỗi `Property 'env' does not exist on type 'ImportMeta'` trong `pbc-loader.ts` và `env.ts` khi dùng `import.meta.env`.
+
+**Quy tắc:** Luôn tạo `app-shell/src/vite-env.d.ts` với đầy đủ các biến môi trường:
+
+```typescript
+/// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  readonly VITE_KAFKA_GATEWAY_URL: string;
+  readonly VITE_CDN_BASE_URL: string;
+  readonly VITE_API_BASE_URL: string;
+  readonly VITE_ENV: "local" | "staging" | "production";
+  readonly VITE_TENANT_ID: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+```
+
+### 17.9 enabledSlots — checklist khi thêm PBC mới (v3.0)
+
+Khi thêm PBC mới vào App Shell theo pattern enabledSlots:
+
+- [ ] Thêm entry vào `app-contract.json.includedPBCs` với `enabledSlots[]`
+- [ ] Khai báo đúng `mountPoint` — phải là một trong các mount point chuẩn (xem section 8.5)
+- [ ] Thêm literal import vào `remote-imports.ts` cho **mỗi slot** (R-18)
+- [ ] Thêm remote vào `vite.config.ts` federation config
+- [ ] Thêm entry vào `pbc-registry.json` với đúng `scope` khớp với tên federation
+- [ ] **Không sửa Shell.tsx** — MountPoint tự đọc config

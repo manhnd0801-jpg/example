@@ -1,28 +1,97 @@
 version: "3.9"
 
-services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.1
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
+# ── Port convention ───────────────────────────────────────────────────────────
+#   App Shell:                3000 (nginx, serve static + proxy remotes)
+#   pbc-auth-api:             3001
+#   pbc-auth-ui:              3011
+#   pbc-student-management-api: 3002 (→ VITE_API_URL=http://localhost:3002)
+#   pbc-student-management-ui:  3012
+#   pbc-class-management-api:   3003
+#   pbc-class-management-ui:    3013
+#   pbc-course-management-api:  3004
+#   pbc-course-management-ui:   3014
+#   pbc-subject-management-api: 3005
+#   pbc-subject-management-ui:  3015
+#   pbc-notification-api:       3006
+#   pbc-notification-ui:        3016
+#   kafka-gateway:              4000
+#   Kafka broker (internal):    9092
+#   Kafka broker (external):    9094
+#   Kafka UI:                   8080
+#   DB ports: 5432-5437
 
+services:
+
+  # ── Kafka (KRaft — không cần Zookeeper) ──────────────────────────────────────
   kafka:
-    image: confluentinc/cp-kafka:7.6.1
+    image: apache/kafka:latest
+    container_name: student-mgmt-kafka
     ports:
       - "9092:9092"
+      - "9094:9094"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    depends_on:
-      - zookeeper
+      KAFKA_LOG_RETENTION_HOURS: 168
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: student-mgmt-kafka-ui
+    ports:
+      - "8080:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: "student-management-local"
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:9092"
+
+  # ── kafka-gateway — WebSocket bridge: Browser ↔ Kafka (R-03a, R-12) ─────────
+  # Browser không connect Kafka trực tiếp — phải qua gateway này
+  kafka-gateway:
+    build:
+      context: ./kafka-gateway
+      dockerfile: Dockerfile
+    container_name: student-mgmt-kafka-gateway
+    ports:
+      - "4000:4000"   # ws://localhost:4000 — App Shell kết nối vào đây
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERS: "kafka:9092"
+      GATEWAY_PORT: "4000"
+      KAFKA_NUM_PARTITIONS: "1"
+      KAFKA_REPLICATION_FACTOR: "1"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').createConnection(4000,'localhost').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: on-failure
+
+  # ── pbc-auth ──────────────────────────────────────────────────────────────────
   pbc-auth-db:
     image: postgres:16-alpine
+    container_name: student-mgmt-pbc-auth-db
     environment:
       POSTGRES_DB: pbc_auth
       POSTGRES_USER: postgres
@@ -31,310 +100,446 @@ services:
       - "5432:5432"
     volumes:
       - pbc_auth_db:/var/lib/postgresql/data
+      # db/init/ chứa cả DDL + seed — PostgreSQL chạy theo thứ tự alphabet
       - ./pbcs/pbc-auth/db/init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d pbc_auth"]
-      interval: 10s
-      retries: 5
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
   pbc-auth-api:
     build:
       context: ./pbcs/pbc-auth
       dockerfile: docker/Dockerfile.api
+    container_name: student-mgmt-pbc-auth-api
     ports:
       - "3001:3001"
     environment:
       NODE_ENV: development
       PORT: 3001
-      LOG_LEVEL: info
       DATABASE_URL: postgresql://postgres:postgres@pbc-auth-db:5432/pbc_auth
-      JWT_SECRET: dev-secret
+      JWT_SECRET: dev-secret-change-in-production
       JWT_EXPIRATION: 15m
       JWT_REFRESH_EXPIRATION: 7d
-      KAFKA_BROKERS: kafka:29092
+      KAFKA_BROKERS: "kafka:9092"
       KAFKA_GROUP_ID: cg.auth
       KAFKA_CLIENT_ID: pbc-auth-api
-      TENANT_HEADER_NAME: X-Tenant-Id
-      CORS_ORIGIN: http://localhost:3011,http://localhost:3000
     depends_on:
-      - pbc-auth-db
-      - kafka
+      pbc-auth-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: on-failure
 
   pbc-auth-ui:
     build:
       context: ./pbcs/pbc-auth
       dockerfile: docker/Dockerfile.ui
       args:
-        VITE_AUTH_API_URL: http://localhost:3000/api/auth
+        VITE_AUTH_API_URL: http://localhost:3001
+        VITE_DEV_TENANT_ID: dev-tenant
+    container_name: student-mgmt-pbc-auth-ui
     ports:
       - "3011:3011"
     depends_on:
-      - pbc-auth-api
+      pbc-auth-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3011/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
+  # ── pbc-student-management ────────────────────────────────────────────────────
   pbc-student-db:
     image: postgres:16-alpine
+    container_name: student-mgmt-pbc-student-db
     environment:
-      POSTGRES_DB: student_management
+      POSTGRES_DB: pbc_student
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
       - "5433:5432"
     volumes:
       - pbc_student_db:/var/lib/postgresql/data
-      - ./pbcs/pbc-student-management/db/migrations:/docker-entrypoint-initdb.d
+      - ./pbcs/pbc-student-management/db/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d student_management"]
-      interval: 10s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pbc_student"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
   pbc-student-management-api:
     build:
       context: ./pbcs/pbc-student-management
       dockerfile: docker/Dockerfile.api
+    container_name: student-mgmt-pbc-student-api
     ports:
       - "3002:3002"
     environment:
       NODE_ENV: development
       PORT: 3002
-      DATABASE_URL: postgresql://postgres:postgres@pbc-student-db:5432/student_management
-      JWT_SECRET: dev-secret
-      KAFKA_BROKERS: kafka:29092
-      KAFKA_CLIENT_ID: pbc-student-management
-      KAFKA_CONSUMER_GROUP: cg.student-mgmt
-      KAFKA_GROUP_ID: cg.student-mgmt
-      CORS_ORIGIN: http://localhost:3012,http://localhost:3000
-      LOG_LEVEL: info
+      DATABASE_URL: postgresql://postgres:postgres@pbc-student-db:5432/pbc_student
+      JWT_SECRET: dev-secret-change-in-production
+      KAFKA_BROKERS: "kafka:9092"
+      KAFKA_GROUP_ID: cg.student-management
+      KAFKA_CLIENT_ID: pbc-student-management-api
     depends_on:
-      - pbc-student-db
-      - kafka
+      pbc-student-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: on-failure
 
   pbc-student-management-ui:
     build:
       context: ./pbcs/pbc-student-management
       dockerfile: docker/Dockerfile.ui
       args:
-        VITE_STUDENT_MGMT_URL: http://localhost:3000/api/student
+        VITE_API_URL: http://localhost:3002
+        VITE_DEV_TENANT_ID: dev-tenant
+    container_name: student-mgmt-pbc-student-ui
     ports:
       - "3012:3012"
     depends_on:
-      - pbc-student-management-api
+      pbc-student-management-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3012/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
+  # ── pbc-class-management ──────────────────────────────────────────────────────
   pbc-class-db:
     image: postgres:16-alpine
+    container_name: student-mgmt-pbc-class-db
     environment:
-      POSTGRES_DB: class_management
+      POSTGRES_DB: pbc_class
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
       - "5434:5432"
     volumes:
       - pbc_class_db:/var/lib/postgresql/data
-      - ./pbcs/pbc-class-management/db/migrations:/docker-entrypoint-initdb.d
+      - ./pbcs/pbc-class-management/db/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d class_management"]
-      interval: 10s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pbc_class"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
   pbc-class-management-api:
     build:
       context: ./pbcs/pbc-class-management
       dockerfile: docker/Dockerfile.api
+    container_name: student-mgmt-pbc-class-api
     ports:
       - "3003:3003"
     environment:
       NODE_ENV: development
       PORT: 3003
-      DATABASE_URL: postgresql://postgres:postgres@pbc-class-db:5432/class_management
-      JWT_SECRET: dev-secret
-      KAFKA_BROKERS: kafka:29092
-      KAFKA_CLIENT_ID: pbc-class-management
-      KAFKA_CONSUMER_GROUP: cg.class-mgmt
-      KAFKA_GROUP_ID: cg.class-mgmt
-      CORS_ORIGIN: http://localhost:3013,http://localhost:3000
-      LOG_LEVEL: info
+      DATABASE_URL: postgresql://postgres:postgres@pbc-class-db:5432/pbc_class
+      JWT_SECRET: dev-secret-change-in-production
+      KAFKA_BROKERS: "kafka:9092"
+      KAFKA_GROUP_ID: cg.class-management
+      KAFKA_CLIENT_ID: pbc-class-management-api
     depends_on:
-      - pbc-class-db
-      - kafka
+      pbc-class-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: on-failure
 
   pbc-class-management-ui:
     build:
       context: ./pbcs/pbc-class-management
       dockerfile: docker/Dockerfile.ui
       args:
-        VITE_CLASS_MGMT_URL: http://localhost:3000/api/class
+        VITE_API_URL: http://localhost:3003
+        VITE_DEV_TENANT_ID: dev-tenant
+    container_name: student-mgmt-pbc-class-ui
     ports:
       - "3013:3013"
     depends_on:
-      - pbc-class-management-api
+      pbc-class-management-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3013/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
+  # ── pbc-course-management ─────────────────────────────────────────────────────
   pbc-course-db:
     image: postgres:16-alpine
+    container_name: student-mgmt-pbc-course-db
     environment:
-      POSTGRES_DB: course_management
+      POSTGRES_DB: pbc_course
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
       - "5435:5432"
     volumes:
       - pbc_course_db:/var/lib/postgresql/data
-      - ./pbcs/pbc-course-management/db/migrations:/docker-entrypoint-initdb.d
+      - ./pbcs/pbc-course-management/db/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d course_management"]
-      interval: 10s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pbc_course"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
   pbc-course-management-api:
     build:
       context: ./pbcs/pbc-course-management
       dockerfile: docker/Dockerfile.api
+    container_name: student-mgmt-pbc-course-api
     ports:
       - "3004:3004"
     environment:
       NODE_ENV: development
       PORT: 3004
-      DATABASE_URL: postgresql://postgres:postgres@pbc-course-db:5432/course_management
-      JWT_SECRET: dev-secret
-      KAFKA_BROKERS: kafka:29092
-      KAFKA_CLIENT_ID: pbc-course-management
-      KAFKA_CONSUMER_GROUP: cg.course-mgmt
-      KAFKA_GROUP_ID: cg.course-mgmt
-      CORS_ORIGIN: http://localhost:3014,http://localhost:3000
-      LOG_LEVEL: info
+      DATABASE_URL: postgresql://postgres:postgres@pbc-course-db:5432/pbc_course
+      JWT_SECRET: dev-secret-change-in-production
+      KAFKA_BROKERS: "kafka:9092"
+      KAFKA_GROUP_ID: cg.course-management
+      KAFKA_CLIENT_ID: pbc-course-management-api
     depends_on:
-      - pbc-course-db
-      - kafka
+      pbc-course-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: on-failure
 
   pbc-course-management-ui:
     build:
       context: ./pbcs/pbc-course-management
       dockerfile: docker/Dockerfile.ui
       args:
-        VITE_COURSE_MGMT_URL: http://localhost:3000/api/course
+        VITE_API_URL: http://localhost:3004
+        VITE_DEV_TENANT_ID: dev-tenant
+    container_name: student-mgmt-pbc-course-ui
     ports:
       - "3014:3014"
     depends_on:
-      - pbc-course-management-api
+      pbc-course-management-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3014/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
+  # ── pbc-subject-management ────────────────────────────────────────────────────
   pbc-subject-db:
     image: postgres:16-alpine
+    container_name: student-mgmt-pbc-subject-db
     environment:
-      POSTGRES_DB: subject_management
+      POSTGRES_DB: pbc_subject
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
       - "5436:5432"
     volumes:
       - pbc_subject_db:/var/lib/postgresql/data
-      - ./pbcs/pbc-subject-management/db/migrations:/docker-entrypoint-initdb.d
+      - ./pbcs/pbc-subject-management/db/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d subject_management"]
-      interval: 10s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pbc_subject"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
   pbc-subject-management-api:
     build:
       context: ./pbcs/pbc-subject-management
       dockerfile: docker/Dockerfile.api
+    container_name: student-mgmt-pbc-subject-api
     ports:
       - "3005:3005"
     environment:
       NODE_ENV: development
       PORT: 3005
-      DATABASE_URL: postgresql://postgres:postgres@pbc-subject-db:5432/subject_management
-      JWT_SECRET: dev-secret
-      KAFKA_BROKERS: kafka:29092
-      KAFKA_CLIENT_ID: pbc-subject-management
-      KAFKA_CONSUMER_GROUP: cg.subject-mgmt
-      KAFKA_GROUP_ID: cg.subject-mgmt
-      CORS_ORIGIN: http://localhost:3015,http://localhost:3000
-      LOG_LEVEL: info
+      DATABASE_URL: postgresql://postgres:postgres@pbc-subject-db:5432/pbc_subject
+      JWT_SECRET: dev-secret-change-in-production
+      KAFKA_BROKERS: "kafka:9092"
+      KAFKA_GROUP_ID: cg.subject-management
+      KAFKA_CLIENT_ID: pbc-subject-management-api
     depends_on:
-      - pbc-subject-db
-      - kafka
+      pbc-subject-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3005/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: on-failure
 
   pbc-subject-management-ui:
     build:
       context: ./pbcs/pbc-subject-management
       dockerfile: docker/Dockerfile.ui
       args:
-        VITE_SUBJECT_MGMT_URL: http://localhost:3000/api/subject
+        VITE_API_URL: http://localhost:3005
+        VITE_DEV_TENANT_ID: dev-tenant
+    container_name: student-mgmt-pbc-subject-ui
     ports:
       - "3015:3015"
     depends_on:
-      - pbc-subject-management-api
+      pbc-subject-management-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3015/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
+  # ── pbc-notification ──────────────────────────────────────────────────────────
   pbc-notification-db:
     image: postgres:16-alpine
+    container_name: student-mgmt-pbc-notification-db
     environment:
-      POSTGRES_DB: notification
+      POSTGRES_DB: pbc_notification
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
       - "5437:5432"
     volumes:
       - pbc_notification_db:/var/lib/postgresql/data
-      - ./pbcs/pbc-notification/db/migrations:/docker-entrypoint-initdb.d
+      - ./pbcs/pbc-notification/db/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d notification"]
-      interval: 10s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pbc_notification"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
   pbc-notification-api:
     build:
       context: ./pbcs/pbc-notification
       dockerfile: docker/Dockerfile.api
+    container_name: student-mgmt-pbc-notification-api
     ports:
       - "3006:3006"
     environment:
       NODE_ENV: development
       PORT: 3006
-      DATABASE_URL: postgresql://postgres:postgres@pbc-notification-db:5432/notification
-      JWT_SECRET: dev-secret
-      KAFKA_BROKERS: kafka:29092
-      KAFKA_CLIENT_ID: pbc-notification
-      KAFKA_CONSUMER_GROUP: cg.notification
+      DATABASE_URL: postgresql://postgres:postgres@pbc-notification-db:5432/pbc_notification
+      JWT_SECRET: dev-secret-change-in-production
+      KAFKA_BROKERS: "kafka:9092"
       KAFKA_GROUP_ID: cg.notification
-      CORS_ORIGIN: http://localhost:3016,http://localhost:3000
-      LOG_LEVEL: info
+      KAFKA_CLIENT_ID: pbc-notification-api
     depends_on:
-      - pbc-notification-db
-      - kafka
+      pbc-notification-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3006/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: on-failure
 
   pbc-notification-ui:
     build:
       context: ./pbcs/pbc-notification
       dockerfile: docker/Dockerfile.ui
       args:
-        VITE_NOTIFICATION_URL: http://localhost:3000/api/notification
+        VITE_API_URL: http://localhost:3006
+        VITE_DEV_TENANT_ID: dev-tenant
+    container_name: student-mgmt-pbc-notification-ui
     ports:
       - "3016:3016"
     depends_on:
-      - pbc-notification-api
+      pbc-notification-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3016/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
+  # ── App Shell ─────────────────────────────────────────────────────────────────
+  # App Shell phụ thuộc tất cả PBC UI — khi `docker compose up --build` chạy,
+  # tất cả PBC images sẽ được build lại trước khi app-shell start
   app-shell:
     build:
-      context: ./app-shell
-      dockerfile: docker/Dockerfile
+      context: .
+      dockerfile: app-shell/Dockerfile
+    container_name: student-mgmt-app-shell
     ports:
       - "3000:3000"
     depends_on:
-      - pbc-auth-ui
-      - pbc-auth-api
-      - pbc-student-management-ui
-      - pbc-student-management-api
-      - pbc-class-management-ui
-      - pbc-class-management-api
-      - pbc-course-management-ui
-      - pbc-course-management-api
-      - pbc-subject-management-ui
-      - pbc-subject-management-api
-      - pbc-notification-ui
-      - pbc-notification-api
+      pbc-auth-ui:
+        condition: service_healthy
+      pbc-student-management-ui:
+        condition: service_healthy
+      pbc-class-management-ui:
+        condition: service_healthy
+      pbc-course-management-ui:
+        condition: service_healthy
+      pbc-subject-management-ui:
+        condition: service_healthy
+      pbc-notification-ui:
+        condition: service_healthy
+      kafka-gateway:
+        condition: service_healthy
+    environment:
+      VITE_KAFKA_GATEWAY_URL: "ws://localhost:4000"
+      VITE_ENV: "local"
+      VITE_API_BASE_URL: "http://localhost:3001"
+      VITE_CDN_BASE_URL: "http://localhost:3000"
+      VITE_TENANT_ID: "dev-tenant"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/nginx-health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
 volumes:
+  kafka_data:
+    driver: local
   pbc_auth_db:
   pbc_student_db:
   pbc_class_db:
   pbc_course_db:
   pbc_subject_db:
   pbc_notification_db:
+
+networks:
+  default:
+    name: student-management-network

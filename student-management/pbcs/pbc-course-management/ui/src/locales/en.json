@@ -1,0 +1,14 @@
+{
+  "course": {
+    "title": "Course Management",
+    "create": "Add course",
+    "edit": "Edit course",
+    "delete": "Delete course",
+    "courseCode": "Course code",
+    "name": "Course name",
+    "description": "Description",
+    "credits": "Credits",
+    "status": "Status",
+    "subjects": "Subjects"
+  }
+}

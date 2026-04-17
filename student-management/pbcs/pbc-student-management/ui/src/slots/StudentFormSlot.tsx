@@ -1,59 +1,48 @@
 // AI-GENERATED
-import React from 'react';
-import { Form, Input, Select, DatePicker, Button, message } from 'antd';
-import { studentApi } from '../services/pbc-api';
+// Slot: student-form — thin wrapper, dùng khi App Shell mount form độc lập
+import React, { useState } from 'react';
+import { message } from 'antd';
+import StudentForm from '../components/business/StudentForm';
+import { createStudent, updateStudent } from '../services/pbc-api';
+import { emitStudentEvent } from '../hooks/event-handlers';
+import type { CreateStudentData, UpdateStudentData } from '../types';
 
-interface Props { studentId?: string; onSuccess?: () => void; }
+interface StudentFormSlotProps {
+  studentId?: string;
+  onSuccess?: () => void;
+}
 
-export default function StudentFormSlot({ studentId, onSuccess }: Props) {
-  const [form] = Form.useForm();
+const StudentFormSlot: React.FC<StudentFormSlotProps> = ({ studentId, onSuccess }) => {
+  const [loading, setLoading] = useState(false);
   const isEdit = !!studentId;
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (data: CreateStudentData | UpdateStudentData) => {
+    setLoading(true);
     try {
       if (isEdit) {
-        await studentApi.update(studentId!, values);
+        await updateStudent(studentId!, data as UpdateStudentData);
         message.success('Cập nhật sinh viên thành công');
+        emitStudentEvent('student.updated', { studentId, ...data });
       } else {
-        await studentApi.create(values);
-        message.success('Tạo sinh viên thành công');
+        await createStudent(data as CreateStudentData);
+        message.success('Thêm sinh viên thành công');
+        emitStudentEvent('student.created', data as Record<string, unknown>);
       }
-      form.resetFields();
       onSuccess?.();
-    } catch {
-      message.error('Có lỗi xảy ra, vui lòng thử lại');
+    } catch (err) {
+      message.error((err as Error).message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ maxWidth: 600 }}>
-      <Form.Item name="fullName" label="Họ và tên" rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}>
-        <Input placeholder="Nguyễn Văn A" />
-      </Form.Item>
-      <Form.Item name="email" label="Email" rules={[{ type: 'email', message: 'Email không hợp lệ' }]}>
-        <Input placeholder="example@email.com" />
-      </Form.Item>
-      <Form.Item name="phone" label="Số điện thoại">
-        <Input placeholder="0123456789" />
-      </Form.Item>
-      <Form.Item name="gender" label="Giới tính">
-        <Select options={[
-          { value: 'MALE', label: 'Nam' },
-          { value: 'FEMALE', label: 'Nữ' },
-          { value: 'OTHER', label: 'Khác' },
-        ]} />
-      </Form.Item>
-      <Form.Item name="dateOfBirth" label="Ngày sinh">
-        <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-      </Form.Item>
-      <Form.Item name="address" label="Địa chỉ">
-        <Input.TextArea rows={2} />
-      </Form.Item>
-      <Form.Item>
-        <Button type="primary" htmlType="submit">
-          {isEdit ? 'Cập nhật' : 'Tạo mới'}
-        </Button>
-      </Form.Item>
-    </Form>
+    <StudentForm
+      loading={loading}
+      onSubmit={handleSubmit}
+      onCancel={() => onSuccess?.()}
+    />
   );
-}
+};
+
+export default StudentFormSlot;

@@ -11,7 +11,12 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "strict": false
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "paths": {
+      "@shared/shared-events": ["../shared/shared-events/index.ts"]
+    }
   },
   "include": ["src"]
 }

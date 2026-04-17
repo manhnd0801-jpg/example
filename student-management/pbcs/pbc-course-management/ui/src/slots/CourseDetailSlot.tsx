@@ -1,43 +1,50 @@
 // AI-GENERATED
+// Slot: course-detail — hiển thị chi tiết khóa học
 import React, { useEffect, useState } from 'react';
-import { Descriptions, Table, Tag, Spin, message } from 'antd';
-import axios from 'axios';
+import { Descriptions, Tag, Spin, Card, message } from 'antd';
+import { getCourseById } from '../services/pbc-api';
+import type { CourseDto, CourseStatus } from '../types';
 
-const BASE = import.meta.env.VITE_COURSE_MGMT_URL || 'http://localhost:3004';
+const STATUS_COLOR: Record<CourseStatus, string> = {
+  ACTIVE: 'green',
+  INACTIVE: 'default',
+  ARCHIVED: 'orange',
+};
 
-export default function CourseDetailSlot({ courseId }: { courseId: string }) {
-  const [course, setCourse] = useState<any>(null);
-  const [subjects, setSubjects] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const headers = { Authorization: `Bearer ${localStorage.getItem('accessToken')}` };
+interface CourseDetailSlotProps {
+  courseId?: string;
+}
+
+const CourseDetailSlot: React.FC<CourseDetailSlotProps> = ({ courseId }) => {
+  const [course, setCourse] = useState<CourseDto | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      axios.get(`${BASE}/v1/courses/${courseId}`, { headers }),
-      axios.get(`${BASE}/v1/courses/${courseId}/subjects`, { headers }),
-    ])
-      .then(([c, s]) => { setCourse(c.data.data); setSubjects(s.data.data.subjects || []); })
-      .catch(() => message.error('Không thể tải thông tin chương trình'))
+    if (!courseId) return;
+    setLoading(true);
+    getCourseById(courseId)
+      .then((res) => setCourse(res.data))
+      .catch((err) => message.error((err as Error).message))
       .finally(() => setLoading(false));
   }, [courseId]);
 
-  if (loading) return <Spin />;
-  if (!course) return <div>Không tìm thấy chương trình</div>;
+  if (!courseId) return <div style={{ padding: 24, color: '#999' }}>Chọn một khóa học để xem chi tiết.</div>;
+  if (loading) return <Spin style={{ display: 'block', margin: '40px auto' }} />;
+  if (!course) return <div style={{ padding: 24 }}>Không tìm thấy khóa học.</div>;
 
   return (
-    <div>
-      <Descriptions bordered column={2} style={{ marginBottom: 24 }}>
-        <Descriptions.Item label="Mã CT">{course.courseCode}</Descriptions.Item>
-        <Descriptions.Item label="Tên CT">{course.courseName}</Descriptions.Item>
-        <Descriptions.Item label="Số năm">{course.durationYears} năm</Descriptions.Item>
-        <Descriptions.Item label="Tổng tín chỉ">{course.totalCredits}</Descriptions.Item>
-        <Descriptions.Item label="Trạng thái"><Tag color="green">{course.status}</Tag></Descriptions.Item>
+    <Card style={{ margin: 24 }}>
+      <Descriptions bordered column={2} title="Thông tin khóa học">
+        <Descriptions.Item label="Mã khóa học">{course.courseCode}</Descriptions.Item>
+        <Descriptions.Item label="Tên khóa học">{course.name}</Descriptions.Item>
+        <Descriptions.Item label="Số tín chỉ">{course.credits}</Descriptions.Item>
+        <Descriptions.Item label="Trạng thái">
+          <Tag color={STATUS_COLOR[course.status]}>{course.status}</Tag>
+        </Descriptions.Item>
+        <Descriptions.Item label="Mô tả" span={2}>{course.description ?? '—'}</Descriptions.Item>
       </Descriptions>
-      <Table rowKey="id" dataSource={subjects} columns={[
-        { title: 'Subject ID', dataIndex: 'subjectId', key: 'subjectId' },
-        { title: 'Học kỳ', dataIndex: 'semester', key: 'semester' },
-        { title: 'Bắt buộc', dataIndex: 'isRequired', key: 'isRequired', render: (v: boolean) => <Tag color={v ? 'red' : 'blue'}>{v ? 'Bắt buộc' : 'Tự chọn'}</Tag> },
-      ]} />
-    </div>
+    </Card>
   );
-}
+};
+
+export default CourseDetailSlot;

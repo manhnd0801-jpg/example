@@ -1,29 +1,161 @@
+variables:
+  NODE_VERSION: "20"
+  DOCKER_REGISTRY: registry.example.vn
+  APP_NAME: student-management
+
 stages:
+  - validate
+  - pbc-compatibility-check
   - build
   - test
+  - integration-test
+  - security-scan
+  - push
   - deploy
+  - notify-pbc-teams
 
-variables:
-  APP_ID: student-management
+# ── Stage: Validate ──────────────────────────────────────────────────────────
+lint:
+  stage: validate
+  image: node:${NODE_VERSION}-alpine
+  script:
+    - cd app-shell && npm ci && npm run lint
+    - npm run type-check
 
+validate-manifests:
+  stage: validate
+  image: node:${NODE_VERSION}-alpine
+  script:
+    - node scripts/validate-manifests.js
+
+# ── Stage: PBC Compatibility Check ───────────────────────────────────────────
+pbc-version-check:
+  stage: pbc-compatibility-check
+  image: node:${NODE_VERSION}-alpine
+  script:
+    - node scripts/check-pbc-versions.js
+  artifacts:
+    reports:
+      dotenv: pbc-compatibility-report.env
+
+# ── Stage: Build ─────────────────────────────────────────────────────────────
 build:app-shell:
   stage: build
+  image: node:${NODE_VERSION}-alpine
   script:
     - cd app-shell && npm ci && npm run build
+  artifacts:
+    paths: [app-shell/dist/]
+    expire_in: 1 hour
+
+build:kafka-gateway:
+  stage: build
+  image: node:${NODE_VERSION}-alpine
+  script:
+    - cd kafka-gateway && npm ci && npm run build
+  artifacts:
+    paths: [kafka-gateway/dist/]
+    expire_in: 1 hour
 
 build:pbcs:
   stage: build
+  image: node:${NODE_VERSION}-alpine
   script:
-    - for pbc in pbcs/*/; do cd "$pbc" && npm ci && npm run build && cd -; done
+    - for pbc in pbcs/*/; do
+        if [ -f "$pbc/package.json" ]; then
+          cd "$pbc" && npm ci && npm run build && cd -;
+        fi;
+      done
 
-test:
+# ── Stage: Test ──────────────────────────────────────────────────────────────
+unit-test:
   stage: test
+  image: node:${NODE_VERSION}-alpine
   script:
-    - echo "Run integration tests here"
+    - cd app-shell && npm ci && npm run test -- --passWithNoTests
+  coverage: '/Lines\s*:\s*(\d+\.?\d*)%/'
 
-deploy:staging:
-  stage: deploy
+# ── Stage: Integration Test ───────────────────────────────────────────────────
+integration-test-event-flow:
+  stage: integration-test
+  image: docker/compose:latest
+  services:
+    - docker:dind
   script:
-    - echo "Deploy $APP_ID to staging"
-  only:
-    - main
+    - docker-compose up -d --wait
+    - echo "Run integration tests here"
+  after_script:
+    - docker-compose down -v
+  artifacts:
+    when: always
+    paths: [test-results/integration/]
+  allow_failure: true
+
+# ── Stage: Security Scan ──────────────────────────────────────────────────────
+dependency-scan:
+  stage: security-scan
+  image: node:${NODE_VERSION}-alpine
+  script:
+    - cd app-shell && npm audit --audit-level=high
+    - cd kafka-gateway && npm audit --audit-level=high
+
+# ── Stage: Push ──────────────────────────────────────────────────────────────
+push-image:
+  stage: push
+  image: docker:latest
+  services: [docker:dind]
+  script:
+    - docker build -t ${DOCKER_REGISTRY}/${APP_NAME}:${CI_COMMIT_SHA} .
+    - docker push ${DOCKER_REGISTRY}/${APP_NAME}:${CI_COMMIT_SHA}
+  only: [main, develop]
+
+# ── Stage: Deploy ─────────────────────────────────────────────────────────────
+deploy-staging:
+  stage: deploy
+  image: alpine/helm:latest
+  script:
+    - helm upgrade --install ${APP_NAME} ./infra/helm
+      --namespace staging
+      --set image.tag=${CI_COMMIT_SHA}
+      --set env=staging
+  environment:
+    name: staging
+    url: https://student-mgmt-staging.example.vn
+  only: [develop]
+
+deploy-production:
+  stage: deploy
+  image: alpine/helm:latest
+  script:
+    - helm upgrade --install ${APP_NAME} ./infra/helm
+      --namespace production
+      --set image.tag=${CI_COMMIT_SHA}
+      --set env=production
+  environment:
+    name: production
+    url: https://student-mgmt.example.vn
+  when: manual
+  only: [main]
+
+# ── Stage: Notify PBC Teams ───────────────────────────────────────────────────
+notify-pbc-teams-success:
+  stage: notify-pbc-teams
+  image: curlimages/curl:latest
+  script:
+    - |
+      curl -X POST ${SLACK_WEBHOOK_URL} \
+        -H "Content-Type: application/json" \
+        -d "{\"text\": \"✅ ${APP_NAME} v${CI_COMMIT_TAG} deployed to production.\"}"
+  when: on_success
+  only: [main]
+
+notify-pbc-teams-failure:
+  stage: notify-pbc-teams
+  image: curlimages/curl:latest
+  script:
+    - |
+      curl -X POST ${SLACK_WEBHOOK_URL} \
+        -H "Content-Type: application/json" \
+        -d "{\"text\": \"❌ ${APP_NAME} deploy FAILED at stage: ${CI_JOB_STAGE}. Check: ${CI_PIPELINE_URL}\"}"
+  when: on_failure
+  only: [main, develop]

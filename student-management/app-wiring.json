@@ -1,0 +1,210 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-04-17T00:00:00Z",
+  "metadata": {
+    "appId": "student-management",
+    "totalNodes": 6,
+    "totalEdges": 10,
+    "autoWiredEdges": 8
+  },
+
+  "nodes": [
+    {
+      "pbcId": "pbc-auth",
+      "displayName": "Authentication & Authorization",
+      "position": { "x": 520, "y": 80 },
+      "ports": {
+        "emits": [
+          { "id": "AUTH:USER_LOGGED_IN",  "topic": "pbc.auth.user.logged-in",  "label": "User Logged In" },
+          { "id": "AUTH:USER_LOGGED_OUT", "topic": "pbc.auth.user.logged-out", "label": "User Logged Out" },
+          { "id": "AUTH:USER_CREATED",    "topic": "pbc.auth.user.created",    "label": "User Created" },
+          { "id": "AUTH:ROLE_CHANGED",    "topic": "pbc.auth.user.role-changed", "label": "Role Changed" }
+        ],
+        "listens": []
+      }
+    },
+    {
+      "pbcId": "pbc-student-management",
+      "displayName": "Quản lý Sinh viên",
+      "position": { "x": 160, "y": 300 },
+      "ports": {
+        "emits": [
+          { "id": "STUDENT:CREATED",        "topic": "pbc.student-management.student.created",        "label": "Student Created" },
+          { "id": "STUDENT:UPDATED",        "topic": "pbc.student-management.student.updated",        "label": "Student Updated" },
+          { "id": "STUDENT:DELETED",        "topic": "pbc.student-management.student.deleted",        "label": "Student Deleted" },
+          { "id": "STUDENT:STATUS_CHANGED", "topic": "pbc.student-management.student.status-changed", "label": "Status Changed" }
+        ],
+        "listens": [
+          { "id": "AUTH:USER_CREATED",        "topic": "pbc.auth.user.created",                            "label": "User Created" },
+          { "id": "CLASS:STUDENT_ASSIGNED",   "topic": "pbc.class-management.student.assigned-to-class",   "label": "Student Assigned to Class" }
+        ]
+      }
+    },
+    {
+      "pbcId": "pbc-class-management",
+      "displayName": "Quản lý Lớp học",
+      "position": { "x": 160, "y": 540 },
+      "ports": {
+        "emits": [
+          { "id": "CLASS:CREATED",          "topic": "pbc.class-management.class.created",              "label": "Class Created" },
+          { "id": "CLASS:UPDATED",          "topic": "pbc.class-management.class.updated",              "label": "Class Updated" },
+          { "id": "CLASS:STUDENT_ASSIGNED", "topic": "pbc.class-management.student.assigned-to-class", "label": "Student Assigned" },
+          { "id": "CLASS:STUDENT_REMOVED",  "topic": "pbc.class-management.student.removed-from-class","label": "Student Removed" }
+        ],
+        "listens": [
+          { "id": "STUDENT:CREATED", "topic": "pbc.student-management.student.created", "label": "Student Created" },
+          { "id": "STUDENT:DELETED", "topic": "pbc.student-management.student.deleted", "label": "Student Deleted" }
+        ]
+      }
+    },
+    {
+      "pbcId": "pbc-course-management",
+      "displayName": "Quản lý Khóa học",
+      "position": { "x": 520, "y": 540 },
+      "ports": {
+        "emits": [
+          { "id": "COURSE:CREATED", "topic": "pbc.course-management.course.created", "label": "Course Created" },
+          { "id": "COURSE:UPDATED", "topic": "pbc.course-management.course.updated", "label": "Course Updated" },
+          { "id": "COURSE:DELETED", "topic": "pbc.course-management.course.deleted", "label": "Course Deleted" }
+        ],
+        "listens": [
+          { "id": "SUBJECT:ASSIGNED_TO_COURSE", "topic": "pbc.subject-management.subject.assigned-to-course", "label": "Subject Assigned to Course" }
+        ]
+      }
+    },
+    {
+      "pbcId": "pbc-subject-management",
+      "displayName": "Quản lý Môn học",
+      "position": { "x": 880, "y": 540 },
+      "ports": {
+        "emits": [
+          { "id": "SUBJECT:CREATED",             "topic": "pbc.subject-management.subject.created",             "label": "Subject Created" },
+          { "id": "SUBJECT:UPDATED",             "topic": "pbc.subject-management.subject.updated",             "label": "Subject Updated" },
+          { "id": "SUBJECT:ASSIGNED_TO_CLASS",   "topic": "pbc.subject-management.subject.assigned-to-class",   "label": "Subject Assigned to Class" },
+          { "id": "SUBJECT:ASSIGNED_TO_COURSE",  "topic": "pbc.subject-management.subject.assigned-to-course",  "label": "Subject Assigned to Course" }
+        ],
+        "listens": [
+          { "id": "COURSE:CREATED", "topic": "pbc.course-management.course.created", "label": "Course Created" }
+        ]
+      }
+    },
+    {
+      "pbcId": "pbc-notification",
+      "displayName": "Thông báo",
+      "position": { "x": 880, "y": 200 },
+      "ports": {
+        "emits": [],
+        "listens": [
+          { "id": "AUTH:USER_LOGGED_IN",    "topic": "pbc.auth.user.logged-in",                        "label": "User Logged In" },
+          { "id": "AUTH:USER_CREATED",      "topic": "pbc.auth.user.created",                          "label": "User Created" },
+          { "id": "AUTH:ROLE_CHANGED",      "topic": "pbc.auth.user.role-changed",                     "label": "Role Changed" },
+          { "id": "STUDENT:CREATED",        "topic": "pbc.student-management.student.created",         "label": "Student Created" },
+          { "id": "STUDENT:STATUS_CHANGED", "topic": "pbc.student-management.student.status-changed",  "label": "Status Changed" },
+          { "id": "CLASS:CREATED",          "topic": "pbc.class-management.class.created",             "label": "Class Created" },
+          { "id": "CLASS:STUDENT_ASSIGNED", "topic": "pbc.class-management.student.assigned-to-class", "label": "Student Assigned" },
+          { "id": "COURSE:CREATED",         "topic": "pbc.course-management.course.created",           "label": "Course Created" },
+          { "id": "SUBJECT:ASSIGNED_CLASS", "topic": "pbc.subject-management.subject.assigned-to-class","label": "Subject Assigned to Class" }
+        ]
+      }
+    }
+  ],
+
+  "edges": [
+    {
+      "id": "edge-001",
+      "source": { "pbcId": "pbc-auth", "portId": "AUTH:USER_CREATED" },
+      "target": { "pbcId": "pbc-student-management", "portId": "AUTH:USER_CREATED" },
+      "transform": {
+        "type": "pick",
+        "fields": ["userId", "tenantId"]
+      },
+      "enabled": true,
+      "autoWired": true,
+      "description": "Liên kết tài khoản với hồ sơ sinh viên khi tạo user mới"
+    },
+    {
+      "id": "edge-002",
+      "source": { "pbcId": "pbc-auth", "portId": "AUTH:USER_LOGGED_IN" },
+      "target": { "pbcId": "pbc-notification", "portId": "AUTH:USER_LOGGED_IN" },
+      "transform": null,
+      "enabled": true,
+      "autoWired": true,
+      "description": "Gửi thông báo chào mừng khi user đăng nhập"
+    },
+    {
+      "id": "edge-003",
+      "source": { "pbcId": "pbc-auth", "portId": "AUTH:USER_CREATED" },
+      "target": { "pbcId": "pbc-notification", "portId": "AUTH:USER_CREATED" },
+      "transform": null,
+      "enabled": true,
+      "autoWired": true,
+      "description": "Thông báo khi tài khoản mới được tạo"
+    },
+    {
+      "id": "edge-004",
+      "source": { "pbcId": "pbc-auth", "portId": "AUTH:ROLE_CHANGED" },
+      "target": { "pbcId": "pbc-notification", "portId": "AUTH:ROLE_CHANGED" },
+      "transform": null,
+      "enabled": true,
+      "autoWired": true,
+      "description": "Thông báo khi quyền user thay đổi"
+    },
+    {
+      "id": "edge-005",
+      "source": { "pbcId": "pbc-student-management", "portId": "STUDENT:CREATED" },
+      "target": { "pbcId": "pbc-notification", "portId": "STUDENT:CREATED" },
+      "transform": null,
+      "enabled": true,
+      "autoWired": true,
+      "description": "Thông báo khi sinh viên mới được tạo"
+    },
+    {
+      "id": "edge-006",
+      "source": { "pbcId": "pbc-student-management", "portId": "STUDENT:STATUS_CHANGED" },
+      "target": { "pbcId": "pbc-notification", "portId": "STUDENT:STATUS_CHANGED" },
+      "transform": null,
+      "enabled": true,
+      "autoWired": true,
+      "description": "Thông báo khi trạng thái sinh viên thay đổi"
+    },
+    {
+      "id": "edge-007",
+      "source": { "pbcId": "pbc-class-management", "portId": "CLASS:STUDENT_ASSIGNED" },
+      "target": { "pbcId": "pbc-student-management", "portId": "CLASS:STUDENT_ASSIGNED" },
+      "transform": {
+        "type": "pick",
+        "fields": ["classId", "studentId"]
+      },
+      "enabled": true,
+      "autoWired": false,
+      "description": "Cập nhật classId sinh viên khi được gán vào lớp"
+    },
+    {
+      "id": "edge-008",
+      "source": { "pbcId": "pbc-class-management", "portId": "CLASS:CREATED" },
+      "target": { "pbcId": "pbc-notification", "portId": "CLASS:CREATED" },
+      "transform": null,
+      "enabled": true,
+      "autoWired": true,
+      "description": "Thông báo khi lớp học mới được tạo"
+    },
+    {
+      "id": "edge-009",
+      "source": { "pbcId": "pbc-class-management", "portId": "CLASS:STUDENT_ASSIGNED" },
+      "target": { "pbcId": "pbc-notification", "portId": "CLASS:STUDENT_ASSIGNED" },
+      "transform": null,
+      "enabled": true,
+      "autoWired": true,
+      "description": "Thông báo khi sinh viên được gán vào lớp"
+    },
+    {
+      "id": "edge-010",
+      "source": { "pbcId": "pbc-course-management", "portId": "COURSE:CREATED" },
+      "target": { "pbcId": "pbc-notification", "portId": "COURSE:CREATED" },
+      "transform": null,
+      "enabled": true,
+      "autoWired": true,
+      "description": "Thông báo khi khóa học mới được tạo"
+    }
+  ]
+}

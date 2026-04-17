@@ -1,16 +1,13 @@
-// AI-GENERATED
+// Entry point của pbc-class-management UI
+// - npm run dev  → render StandaloneApp để chạy/test độc lập
+// - npm run build → Vite build remoteEntry.js cho Module Federation (App Shell load)
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ConfigProvider, Layout, Typography } from 'antd';
-import ClassListSlot from './slots/ClassListSlot';
+import StandaloneApp from './StandaloneApp';
+import './styles/design-tokens.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ConfigProvider>
-      <Layout style={{ minHeight: '100vh' }}>
-        <Layout.Header><Typography.Title level={4} style={{ color: '#fff', margin: 0 }}>Class Management (Dev)</Typography.Title></Layout.Header>
-        <Layout.Content style={{ padding: 24 }}><ClassListSlot /></Layout.Content>
-      </Layout>
-    </ConfigProvider>
+    <StandaloneApp />
   </React.StrictMode>,
 );

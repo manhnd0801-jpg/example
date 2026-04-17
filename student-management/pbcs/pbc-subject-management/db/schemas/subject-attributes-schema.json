@@ -1,0 +1,27 @@
+{
+  "title": "SubjectAttributes",
+  "description": "Schema cho cột attributes JSON trong bảng subjects",
+  "type": "object",
+  "properties": {
+    "prerequisites": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Danh sách subject_code của môn học tiên quyết"
+    },
+    "learningOutcomes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Chuẩn đầu ra của môn học"
+    },
+    "textbooks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Danh sách giáo trình tham khảo"
+    },
+    "assessmentMethod": {
+      "type": "string",
+      "description": "Phương pháp đánh giá (ví dụ: 30% giữa kỳ + 70% cuối kỳ)"
+    }
+  },
+  "additionalProperties": true
+}
