@@ -34,6 +34,7 @@
 [3. Kéo PBC vào]  ──────────────────────────────────────────────────────────────►
       │                                                                          │
       │  Codegen ngay: cập nhật routes, registry, compose, topic-registry       │
+      │  (PBC nhiều slot: hiện Slot Picker → chọn slot → codegen routes)        │
       ▼                                                                          │
 [4. Nối / Sửa Event]  ──────────────────────────────────────────────────────────►
       │                                                                          │
@@ -261,7 +262,113 @@ User kéo "pbc-auth" vào canvas
   Code trong repo đã được cập nhật — có thể pull và chạy ngay
 ```
 
-### 3.3 Kéo thêm PBC thứ 2 — platform tự detect event connection (AUTO-WIRING)
+### 3.3 Xử lý PBC có nhiều Slot
+
+Một PBC có thể expose nhiều slot (ví dụ `pbc-auth` có `LoginSlot`, `RegisterSlot`, `ProfileSlot`, `ForgotPasswordSlot`). Platform xử lý theo flow sau:
+
+```
+User kéo "pbc-auth" vào canvas (PBC có nhiều slot)
+        │
+        ▼
+  Platform đọc pbc-contract.json → phát hiện PBC có nhiều slot
+        │
+        ▼
+  Hiển thị Slot Picker dialog:
+  ┌──────────────────────────────────────────────────────────────┐
+  │  pbc-auth — Chọn slots muốn sử dụng                         │
+  │                                                              │
+  │  ☑ LoginSlot         → mount tại /login                     │
+  │  ☑ RegisterSlot      → mount tại /register                  │
+  │  ☐ ProfileSlot       → mount tại /profile  (optional)       │
+  │  ☐ ForgotPasswordSlot → mount tại /forgot-password          │
+  │                                                              │
+  │  💡 Có thể bật/tắt slot bất kỳ lúc nào sau này              │
+  │                                                              │
+  │  [Xác nhận]                                                  │
+  └──────────────────────────────────────────────────────────────┘
+        │
+        │  User chọn LoginSlot + RegisterSlot → Click "Xác nhận"
+        ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  CODEGEN — Thêm pbc-auth với 2 slot được enable                        │
+  │                                                                         │
+  │  Cập nhật app-contract.json:                                            │
+  │    includedPBCs: [{                                                     │
+  │      pbcId: "pbc-auth",                                                 │
+  │      version: "0.1.0",                                                  │
+  │      enabledSlots: [                                                    │
+  │        { slotName: "LoginSlot",    mountPoint: "login-page",    visible: true },│
+  │        { slotName: "RegisterSlot", mountPoint: "register-page", visible: true } │
+  │      ]                                                                  │
+  │    }]                                                                   │
+  │                                                                         │
+  │  Regenerate routes.config.ts:                                           │
+  │    ROUTES = [                                                           │
+  │      { path: "/login",    pbcId: "pbc-auth", slotName: "LoginSlot" },  │
+  │      { path: "/register", pbcId: "pbc-auth", slotName: "RegisterSlot" }│
+  │    ]                                                                    │
+  │                                                                         │
+  │  (docker-compose.yml chỉ deploy 1 service pbc-auth-api dù có nhiều slot)│
+  └─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Canvas hiển thị PBC với slot info:**
+
+```
+┌──────────────────────────────────────┐
+│  pbc-auth  v0.1.0                    │
+│  ──────────────────────────────────  │
+│  📌 SLOTS:                           │
+│    ✅ LoginSlot    → /login          │
+│    ✅ RegisterSlot → /register       │
+│    ○  ProfileSlot  (disabled)        │
+│    ○  ForgotPasswordSlot (disabled)  │
+│                                      │
+│  ● EMITS: user.login, user.created   │
+│  ○ CONSUMES: (none)                  │
+└──────────────────────────────────────┘
+```
+
+**Toggle slot bất kỳ lúc nào:**
+
+```
+User click vào node pbc-auth → Click "⚙️ Manage Slots"
+        │
+        ▼
+  ┌──────────────────────────────────────────────────────────────┐
+  │  pbc-auth — Quản lý Slots                                    │
+  │                                                              │
+  │  ☑ LoginSlot         → /login                               │
+  │  ☑ RegisterSlot      → /register                            │
+  │  ☐ ProfileSlot       → /profile  ← User tick vào đây       │
+  │  ☐ ForgotPasswordSlot → /forgot-password                    │
+  │                                                              │
+  │  [💾 Lưu thay đổi]                                           │
+  └──────────────────────────────────────────────────────────────┘
+        │
+        │  User tick ProfileSlot → Click "Lưu thay đổi"
+        ▼
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  CODEGEN — Enable ProfileSlot                                           │
+  │                                                                         │
+  │  Cập nhật app-contract.json:                                            │
+  │    enabledSlots: thêm { slotName: "ProfileSlot", ... }                 │
+  │                                                                         │
+  │  Regenerate routes.config.ts:                                           │
+  │    ROUTES: thêm { path: "/profile", pbcId: "pbc-auth", slotName: "ProfileSlot" }│
+  │                                                                         │
+  │  (app-wiring.json KHÔNG thay đổi — slot không ảnh hưởng event wiring) │
+  └─────────────────────────────────────────────────────────────────────────┘
+```
+
+> **Nguyên tắc thiết kế:**
+> - **1 PBC = 1 node trên canvas** — dù có nhiều slot, vẫn chỉ là 1 card
+> - **1 PBC = 1 deployment unit** — docker-compose chỉ deploy 1 service dù enable nhiều slot
+> - **Slot không ảnh hưởng event wiring** — event thuộc về PBC, không phải slot
+> - **app-wiring.json không track slot** — chỉ track node (PBC) và edge (event)
+> - **Slot chỉ ảnh hưởng routing** — `routes.config.ts` và `app-contract.json`
+
+### 3.4 Kéo thêm PBC thứ 2 — platform tự detect event connection (AUTO-WIRING)
 
 ```
 User kéo "pbc-student-mgmt" vào canvas
@@ -346,7 +453,7 @@ User kéo "pbc-student-mgmt" vào canvas
   └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.4 Canvas sau khi kéo đủ 6 PBC
+### 3.5 Canvas sau khi kéo đủ 6 PBC
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -552,6 +659,9 @@ Vì code luôn ở trạng thái sẵn sàng, user có thể deploy bất kỳ l
 | Sửa event transform | **`app-wiring.json` (cập nhật edge.transform)** → `event-mapping.config.ts`, `app-asyncapi.yaml` |
 | Toggle enable/disable edge | **`app-wiring.json` (cập nhật edge.enabled)** → `event-mapping.config.ts` |
 | Kéo node trên canvas | **`app-wiring.json` (cập nhật node.position)** — không trigger codegen khác |
+| **Enable slot** | `app-contract.json` (thêm vào `enabledSlots`), `routes.config.ts` (thêm route) |
+| **Disable slot** | `app-contract.json` (xóa khỏi `enabledSlots`), `routes.config.ts` (xóa route) |
+| **Đổi mountPath của slot** | `app-contract.json`, `routes.config.ts`, `pbc-registry.json` |
 | Xóa PBC | **`app-wiring.json` (xóa node + edges liên quan)**, tất cả file trên (xóa phần liên quan) |
 | Sửa theme / i18n | `DesignTokenProvider.tsx`, `app-manifest.json` |
 | Sửa security config | `auth-guard.ts`, `app-manifest.json` |
