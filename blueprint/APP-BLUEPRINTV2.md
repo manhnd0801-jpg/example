@@ -1,7 +1,10 @@
 # VNPT COMPOSABLE APP BLUEPRINT (AI Generation Template)
 
-**Phiên bản:** 2.8  
+**Phiên bản:** 2.9
 **Nền tảng:** VNPT Composable Platform (App Composition Layer)
+
+> **Đây là file blueprint chính thức** — thay thế APP-BLUEPRINT.md (v2.7).  
+> v2.9 bổ sung các bài học từ thực tế triển khai pbc-auth + app-shell integration.
 
 ## MỤC LỤC
 
@@ -37,6 +40,11 @@
 | R-08  | App Shell phải có Auth Guard bảo vệ route trước khi load PBC                                          | Security                                   |
 | R-09  | Version PBC phải khai báo semver range trong pbc-registry.json                                        | Compatibility                              |
 | R-10  | PBC không được override CSS variable ở :root — chỉ đọc token từ App Shell                             | Design consistency                         |
+| R-11  | Import path từ `app-shell/src/` đến `app-contract.json` / `pbc-registry.json` phải đi đúng số cấp thư mục (`../../../`) — kiểm tra kỹ khi monorepo có nhiều cấp lồng nhau | Build sẽ fail với "Could not resolve" nếu sai path |
+| R-12  | KafkaJS **không chạy được trong browser** (dùng Node.js modules: `net`, `tls`, `util`). App Shell frontend phải kết nối Kafka qua `kafka-gateway` WebSocket — không import kafkajs trực tiếp vào bundle Vite | Browser compatibility |
+| R-13  | `app-shell/` phải có `index.html` trỏ vào `src/main.tsx` và `tsconfig.json` — thiếu hai file này Vite không build được | Build requirement |
+| R-14  | `security.authPBC` trong `app-contract.json` phải khớp đúng `pbcId` trong `pbc-registry.json` (không phải tên thư mục hay tên service) | Consistency |
+| R-15  | Route `/login` phải được khai trong `security.publicRoutes` và có entry trong `pbc-registry.json` với `pbcId` của auth PBC | Auth flow |
 
 ## 2. CẤU TRÚC THƯ MỤC ĐẦY ĐỦ
 
@@ -1734,3 +1742,82 @@ Quy tắc bắt buộc:
 | Kafka Broker (external/host) | 9094 |
 | Kafka UI Monitor             | 8080 |
 | API Gateway                  | 8090 |
+
+## 15. BÀI HỌC TỪ THỰC TẾ TRIỂN KHAI (v2.9)
+
+Những vấn đề phát sinh khi tích hợp pbc-auth vào app-shell và cách xử lý:
+
+### 15.1 Import path trong monorepo
+
+**Vấn đề:** `app-shell/src/guards/auth-guard.ts` import `../../app-contract.json` nhưng file thật nằm ở `student-management/app-contract.json` — cách 3 cấp so với `src/guards/`.
+
+**Quy tắc:** Trước khi sinh code, AI phải tính đúng số cấp `../` dựa trên vị trí thực tế của file trong monorepo:
+```
+app-shell/src/guards/auth-guard.ts  →  ../../../app-contract.json  ✅
+app-shell/src/config/app-contract.ts →  ../../../app-contract.json  ✅
+app-shell/src/core/pbc-loader.ts    →  ../../../pbc-registry.json  ✅
+```
+
+### 15.2 KafkaJS không chạy trong browser
+
+**Vấn đề:** Import `kafkajs` vào Vite bundle gây warnings `Module "net" has been externalized` và runtime error vì browser không có Node.js modules.
+
+**Giải pháp (đã có trong v2.8):** Dùng `kafka-gateway` WebSocket bridge. App Shell frontend chỉ dùng `WebSocket` API native của browser.
+
+**Nếu chưa có kafka-gateway** (dev nhanh): wrap `initEventBus` trong try/catch, log warning và tiếp tục — không crash app:
+```typescript
+try {
+  await initEventBus(KAFKA_BROKERS);
+} catch (err) {
+  console.warn('[app-shell] Event bus unavailable, continuing without events');
+}
+```
+
+### 15.3 Auth PBC cần route đặc biệt
+
+**Vấn đề:** Route `/login` cần render `LoginSlot` từ pbc-auth **không có Shell** (không có Navbar/Sidebar) — khác với các PBC khác render trong Shell.
+
+**Quy tắc:**
+- `/login` phải có trong `security.publicRoutes` của `app-contract.json`
+- `main.tsx` phải xử lý route `/login` riêng, không wrap trong `<Shell>`
+- Sau khi login thành công, redirect về `appContract.appShell.defaultRoute`
+- Lưu `returnTo` vào `sessionStorage` trước khi redirect về `/login`
+
+### 15.4 Token storage
+
+**Vấn đề:** Dùng `localStorage.getItem("token")` — key không nhất quán với pbc-auth dùng `accessToken`.
+
+**Quy tắc:** Thống nhất key storage:
+- `accessToken` — JWT access token
+- `refreshToken` — refresh token  
+- `tenantId` — tenant context
+- `currentUser` — user info (JSON) trong `sessionStorage`
+
+**Tốt hơn (v2.8):** Dùng in-memory storage qua `token-manager.ts` để tránh XSS.
+
+### 15.5 Dockerfile app-shell cần nginx.conf riêng
+
+**Vấn đề:** Nginx mặc định listen port 80, nhưng app-shell chạy port 3010 — container start nhưng không accessible.
+
+**Quy tắc:** Luôn tạo `nginx.conf` với `listen <port>;` khi port khác 80, mount vào `/etc/nginx/conf.d/default.conf`. Thêm SPA fallback `try_files $uri $uri/ /index.html;`.
+
+### 15.6 pbc-registry.json — port conflict
+
+**Vấn đề:** pbc-auth API đang dùng port 3001, nhưng pbc-registry.json của app cũng gán port 3001 cho `pbc-student-profile` → conflict khi chạy cùng lúc.
+
+**Quy tắc:** Khi thêm PBC auth vào app, phải remap port các PBC khác:
+- `pbc-auth-api`: 3001 (giữ nguyên theo pbc-auth config)
+- `pbc-auth-ui`: 3011
+- Các PBC nghiệp vụ: 3012, 3013, 3014...
+
+### 15.7 Checklist tích hợp PBC mới vào App
+
+Khi thêm một PBC mới vào App Shell, AI phải thực hiện đủ các bước:
+
+- [ ] Thêm `{ "pbcId": "...", "version": "..." }` vào `app-contract.json.includedPBCs`
+- [ ] Thêm entry vào `pbc-registry.json.pbcList` với port không trùng
+- [ ] Nếu là auth PBC: thêm route vào `security.publicRoutes`, xử lý riêng trong `main.tsx`
+- [ ] Cập nhật `docker-compose.yml` với service mới + volume nếu có DB
+- [ ] Cập nhật `security.authPBC` nếu đây là PBC xác thực
+- [ ] Kiểm tra port conflict với tất cả PBC đang chạy
+- [ ] Verify `pbcId` trong registry khớp với `pbcId` trong `pbc-contract.json` của PBC

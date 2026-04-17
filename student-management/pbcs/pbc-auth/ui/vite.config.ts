@@ -26,7 +26,11 @@ export default defineConfig({
         './ProfileSlot':        './src/slots/ProfileSlot',
         './UserManagementSlot': './src/slots/UserManagementSlot',
       },
-      shared: ['react', 'react-dom', 'antd'],
+      shared: {
+        react: { singleton: true, requiredVersion: "^18.0.0" },
+        "react-dom": { singleton: true, requiredVersion: "^18.0.0" },
+        antd: { singleton: true, requiredVersion: "^5.0.0" },
+      },
     }),
   ],
   server: { port: 3011 },

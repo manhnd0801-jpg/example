@@ -12,7 +12,39 @@ import type { UserDto, RoleDto, CreateUserData } from '../types';
 
 const { Title } = Typography;
 
-const UserManagementSlot: React.FC = () => {
+// Roles có toàn quyền (tạo/sửa/xóa user, gán role)
+const ADMIN_ROLES = ['ADMIN'];
+
+/** Decode JWT payload mà không cần verify signature */
+function getRoleFromToken(): string {
+  try {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return '';
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.role ?? '';
+  } catch {
+    return '';
+  }
+}
+
+interface UserManagementSlotProps {
+  userRole?: string;
+}
+
+const UserManagementSlot: React.FC<UserManagementSlotProps> = ({ userRole }) => {
+  // Ưu tiên: prop từ App Shell → sessionStorage → JWT token
+  const effectiveRole = userRole
+    || (() => {
+      try {
+        const stored = sessionStorage.getItem('currentUser');
+        if (stored) return JSON.parse(stored)?.role ?? '';
+      } catch { /* ignore */ }
+      return '';
+    })()
+    || getRoleFromToken();
+
+  const isAdmin = ADMIN_ROLES.includes(effectiveRole);
+
   const [users, setUsers]         = useState<UserDto[]>([]);
   const [roles, setRoles]         = useState<RoleDto[]>([]);
   const [total, setTotal]         = useState(0);
@@ -69,7 +101,6 @@ const UserManagementSlot: React.FC = () => {
         message.success('Đã cập nhật người dùng');
       } else {
         const created = await createUser(values as CreateUserData);
-        // Phát event lên App Shell → forward lên Kafka
         emitAuthEvent('pbc.auth.user.created', {
           userId: created.data.id,
           username: created.data.username,
@@ -88,9 +119,12 @@ const UserManagementSlot: React.FC = () => {
     <div style={{ padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <Title level={4} style={{ margin: 0 }}>Quản lý Người dùng</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-          Thêm người dùng
-        </Button>
+        {/* Chỉ ADMIN mới được tạo user mới */}
+        {isAdmin && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            Thêm người dùng
+          </Button>
+        )}
       </div>
 
       <UserTable
@@ -98,27 +132,32 @@ const UserManagementSlot: React.FC = () => {
         total={total}
         page={page}
         loading={loading}
+        // Chỉ ADMIN mới thấy nút Sửa/Xóa
+        canEdit={isAdmin}
+        canDelete={isAdmin}
         onEdit={openEdit}
         onDelete={handleDelete}
         onPageChange={(p) => { setPage(p); fetchUsers(p); }}
       />
 
-      <Modal
-        title={editingUser ? 'Sửa người dùng' : 'Thêm người dùng'}
-        open={modalOpen}
-        onCancel={() => setModalOpen(false)}
-        onOk={() => form.submit()}
-        okText={editingUser ? 'Cập nhật' : 'Tạo'}
-        cancelText="Hủy"
-        destroyOnClose
-      >
-        <UserForm
-          form={form}
-          editingUser={editingUser}
-          roles={roles}
-          onFinish={handleSubmit}
-        />
-      </Modal>
+      {isAdmin && (
+        <Modal
+          title={editingUser ? 'Sửa người dùng' : 'Thêm người dùng'}
+          open={modalOpen}
+          onCancel={() => setModalOpen(false)}
+          onOk={() => form.submit()}
+          okText={editingUser ? 'Cập nhật' : 'Tạo'}
+          cancelText="Hủy"
+          destroyOnClose
+        >
+          <UserForm
+            form={form}
+            editingUser={editingUser}
+            roles={roles}
+            onFinish={handleSubmit}
+          />
+        </Modal>
+      )}
     </div>
   );
 };

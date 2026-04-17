@@ -16,7 +16,7 @@ export default defineConfig({
         pbc_subject_management: "http://localhost:3000/remotes/pbc-subject-management/assets/remoteEntry.js",
         pbc_notification:       "http://localhost:3000/remotes/pbc-notification/assets/remoteEntry.js",
       },
-      shared: ["react", "react-dom"],
+      shared: ["react", "react-dom", "antd"],
     }),
   ],
   server: {

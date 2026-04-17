@@ -1,9 +1,16 @@
 // AI-GENERATED
 import React from "react";
+import { Result, Button } from "antd";
 
 export const NotFound: React.FC = () => (
-  <div style={{ padding: 40, textAlign: "center" }}>
-    <h2>404 — Không tìm thấy trang</h2>
-    <a href="/">Về trang chủ</a>
-  </div>
+  <Result
+    status="404"
+    title="404"
+    subTitle="Trang bạn tìm kiếm không tồn tại."
+    extra={
+      <Button type="primary" href="/">
+        Về trang chủ
+      </Button>
+    }
+  />
 );
