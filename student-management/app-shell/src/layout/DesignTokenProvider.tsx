@@ -4,7 +4,7 @@
 // R-10: PBC PHẢI dùng var(--color-primary) v.v. — không được override :root từ PBC
 //
 import React, { useEffect } from "react";
-import { ConfigProvider, theme } from "antd";
+import { App, ConfigProvider, theme } from "antd";
 import viVN from "antd/locale/vi_VN";
 import manifest from "../../../app-manifest.json";
 
@@ -47,7 +47,7 @@ export const DesignTokenProvider: React.FC<Props> = ({ children }) => {
         },
       }}
     >
-      {children}
+      <App>{children}</App>
     </ConfigProvider>
   );
 };

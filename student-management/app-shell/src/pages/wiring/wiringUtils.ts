@@ -1,7 +1,9 @@
 // Wiring canvas — utilities
 // Convert app-wiring.json → React Flow nodes/edges
+// version trong node được đọc từ app-wiring.json và cross-check với pbc-registry.json
 import type { Node, Edge } from "@xyflow/react";
 import wiringData from "../../../../app-wiring.json";
+import registry from "../../../../pbc-registry.json";
 import type { WiringNodeData, WiringEdgeMeta } from "./types";
 
 // Màu cho từng PBC
@@ -16,27 +18,54 @@ const PBC_COLORS: Record<string, string> = {
 
 const DEFAULT_COLOR = "#8c8c8c";
 
+// Lấy version từ pbc-registry để cross-check
+function getRegistryVersion(pbcId: string): string | undefined {
+  return registry.pbcs.find((p) => p.id === pbcId)?.version;
+}
+
+// So sánh version trong wiring vs registry — cảnh báo nếu lệch
+export function checkVersionMismatch(): { pbcId: string; wiringVersion: string; registryVersion: string }[] {
+  return wiringData.nodes
+    .filter((n) => {
+      const rv = getRegistryVersion(n.pbcId);
+      return rv && rv !== (n as { version?: string }).version;
+    })
+    .map((n) => ({
+      pbcId:           n.pbcId,
+      wiringVersion:   (n as { version?: string }).version ?? "unknown",
+      registryVersion: getRegistryVersion(n.pbcId) ?? "unknown",
+    }));
+}
+
 export function buildNodes(): Node[] {
-  return wiringData.nodes.map((n) => ({
-    id: n.pbcId,
-    type: "pbcNode",
-    position: n.position,
-    data: {
-      pbcId:       n.pbcId,
-      displayName: n.displayName,
-      emits:       n.ports.emits,
-      listens:     n.ports.listens,
-      color:       PBC_COLORS[n.pbcId] ?? DEFAULT_COLOR,
-    } satisfies WiringNodeData,
-    // Không cho resize, chỉ drag
-    draggable: true,
-    selectable: true,
-  }));
+  return wiringData.nodes.map((n) => {
+    const registryVersion = getRegistryVersion(n.pbcId);
+    const wiringVersion = (n as { version?: string }).version ?? "unknown";
+    const versionMismatch = registryVersion !== undefined && registryVersion !== wiringVersion;
+
+    return {
+      id: n.pbcId,
+      type: "pbcNode",
+      position: n.position,
+      data: {
+        pbcId:          n.pbcId,
+        version:        wiringVersion,
+        registryVersion,
+        versionMismatch,
+        displayName:    n.displayName,
+        emits:          n.ports.emits,
+        listens:        n.ports.listens,
+        color:          versionMismatch ? "#ff4d4f" : (PBC_COLORS[n.pbcId] ?? DEFAULT_COLOR),
+      } satisfies WiringNodeData & { registryVersion?: string; versionMismatch?: boolean },
+      draggable:  true,
+      selectable: true,
+    };
+  });
 }
 
 export function buildEdges(): Edge[] {
   return wiringData.edges.map((e) => ({
-    id: e.id,
+    id:           e.id,
     source:       e.source.pbcId,
     sourceHandle: e.source.portId,
     target:       e.target.pbcId,

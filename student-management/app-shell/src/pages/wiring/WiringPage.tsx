@@ -46,7 +46,7 @@ import {
 } from "@ant-design/icons";
 import { PbcNode } from "./PbcNode";
 import { WiringEdge } from "./WiringEdge";
-import { buildNodes, buildEdges } from "./wiringUtils";
+import { buildNodes, buildEdges, checkVersionMismatch } from "./wiringUtils";
 import type { WiringEdgeMeta } from "./types";
 
 const { Text, Title } = Typography;
@@ -58,6 +58,7 @@ const EDGE_TYPES = { wiringEdge: WiringEdge };
 export const WiringPage: React.FC = () => {
   const initialNodes = useMemo(() => buildNodes(), []);
   const initialEdges = useMemo(() => buildEdges(), []);
+  const versionMismatches = useMemo(() => checkVersionMismatch(), []);
 
   const [nodes, , onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -238,6 +239,27 @@ export const WiringPage: React.FC = () => {
           💡 Kéo handle để nối • Click edge để xem chi tiết • Scroll để zoom
         </span>
       </div>
+
+      {/* Version mismatch warning */}
+      {versionMismatches.length > 0 && (
+        <div style={{ padding: "6px 20px", background: "#fff2f0", borderBottom: "1px solid #ffccc7", flexShrink: 0 }}>
+          <Alert
+            type="warning"
+            showIcon
+            message={
+              <span>
+                <b>{versionMismatches.length} PBC</b> có version lệch giữa app-wiring.json và pbc-registry.json:{" "}
+                {versionMismatches.map((m) => (
+                  <Tag key={m.pbcId} color="red" style={{ fontSize: 11 }}>
+                    {m.pbcId}: wiring v{m.wiringVersion} ≠ registry v{m.registryVersion}
+                  </Tag>
+                ))}
+              </span>
+            }
+            style={{ padding: "4px 12px" }}
+          />
+        </div>
+      )}
 
       {/* Canvas */}
       <div style={{ flex: 1, position: "relative" }}>

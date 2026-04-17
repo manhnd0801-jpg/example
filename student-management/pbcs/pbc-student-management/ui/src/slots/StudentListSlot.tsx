@@ -1,15 +1,14 @@
-// AI-GENERATED
 // Slot: student-list — thin wrapper, orchestrate StudentTable component
 import React, { useEffect, useState } from 'react';
 import { Button, Input, Modal, Select, Space, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import StudentTable from '../components/business/StudentTable';
 import StudentForm from '../components/business/StudentForm';
-import { listStudents, deleteStudent, createStudent } from '../services/pbc-api';
+import { listStudents, deleteStudent, createStudent, updateStudent } from '../services/pbc-api';
 import { emitStudentEvent } from '../hooks/event-handlers';
-import type { StudentDto, CreateStudentData } from '../types';
+import type { StudentDto, CreateStudentData, UpdateStudentData } from '../types';
 
-const CourseListSlot: React.FC = () => {
+const StudentListSlot: React.FC = () => {
   const [students, setStudents] = useState<StudentDto[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -17,6 +16,7 @@ const CourseListSlot: React.FC = () => {
   const [status, setStatus] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
   const fetchStudents = async (p = page) => {
@@ -34,6 +34,21 @@ const CourseListSlot: React.FC = () => {
 
   useEffect(() => { fetchStudents(); }, [page, search, status]);
 
+  const handleOpenCreate = () => {
+    setEditingStudent(null);
+    setShowForm(true);
+  };
+
+  const handleOpenEdit = (student: StudentDto) => {
+    setEditingStudent(student);
+    setShowForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setEditingStudent(null);
+  };
+
   const handleDelete = async (studentId: string) => {
     try {
       await deleteStudent(studentId);
@@ -45,13 +60,19 @@ const CourseListSlot: React.FC = () => {
     }
   };
 
-  const handleCreate = async (data: CreateStudentData) => {
+  const handleSubmit = async (data: CreateStudentData | UpdateStudentData) => {
     setFormLoading(true);
     try {
-      await createStudent(data);
-      message.success('Thêm sinh viên thành công');
-      emitStudentEvent('student.created', data as Record<string, unknown>);
-      setShowForm(false);
+      if (editingStudent) {
+        await updateStudent(editingStudent.id, data as UpdateStudentData);
+        message.success('Cập nhật sinh viên thành công');
+        emitStudentEvent('student.updated', data as Record<string, unknown>);
+      } else {
+        await createStudent(data as CreateStudentData);
+        message.success('Thêm sinh viên thành công');
+        emitStudentEvent('student.created', data as Record<string, unknown>);
+      }
+      handleCloseForm();
       fetchStudents();
     } catch (err) {
       message.error((err as Error).message);
@@ -81,7 +102,7 @@ const CourseListSlot: React.FC = () => {
             { value: 'SUSPENDED', label: 'Đình chỉ' },
           ]}
         />
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenCreate}>
           Thêm sinh viên
         </Button>
       </Space>
@@ -91,26 +112,27 @@ const CourseListSlot: React.FC = () => {
         total={total}
         page={page}
         loading={loading}
-        onEdit={() => setShowForm(true)}
+        onEdit={handleOpenEdit}
         onDelete={handleDelete}
         onPageChange={setPage}
       />
 
       <Modal
-        title="Thêm sinh viên"
+        title={editingStudent ? 'Sửa sinh viên' : 'Thêm sinh viên'}
         open={showForm}
-        onCancel={() => setShowForm(false)}
+        onCancel={handleCloseForm}
         footer={null}
         destroyOnClose
       >
         <StudentForm
+          initialValues={editingStudent ?? undefined}
           loading={formLoading}
-          onSubmit={handleCreate}
-          onCancel={() => setShowForm(false)}
+          onSubmit={handleSubmit}
+          onCancel={handleCloseForm}
         />
       </Modal>
     </div>
   );
 };
 
-export default CourseListSlot;
+export default StudentListSlot;

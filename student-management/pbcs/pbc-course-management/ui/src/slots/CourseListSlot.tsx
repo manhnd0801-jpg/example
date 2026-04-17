@@ -1,13 +1,12 @@
-// AI-GENERATED
 // Slot: course-list — thin wrapper, orchestrate CourseTable component
 import React, { useEffect, useState } from 'react';
 import { Button, Modal, Space, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import CourseTable from '../components/business/CourseTable';
 import CourseForm from '../components/business/CourseForm';
-import { listCourses, deleteCourse, createCourse } from '../services/pbc-api';
+import { listCourses, deleteCourse, createCourse, updateCourse } from '../services/pbc-api';
 import { emitCourseEvent } from '../hooks/event-handlers';
-import type { CourseDto, CreateCourseData } from '../types';
+import type { CourseDto, CreateCourseData, UpdateCourseData } from '../types';
 
 const CourseListSlot: React.FC = () => {
   const [courses, setCourses] = useState<CourseDto[]>([]);
@@ -15,6 +14,7 @@ const CourseListSlot: React.FC = () => {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<CourseDto | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
   const fetchCourses = async (p = page) => {
@@ -32,6 +32,21 @@ const CourseListSlot: React.FC = () => {
 
   useEffect(() => { fetchCourses(); }, [page]);
 
+  const handleOpenCreate = () => {
+    setEditingCourse(null);
+    setShowForm(true);
+  };
+
+  const handleOpenEdit = (course: CourseDto) => {
+    setEditingCourse(course);
+    setShowForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setEditingCourse(null);
+  };
+
   const handleDelete = async (courseId: string) => {
     try {
       await deleteCourse(courseId);
@@ -43,13 +58,19 @@ const CourseListSlot: React.FC = () => {
     }
   };
 
-  const handleCreate = async (data: CreateCourseData) => {
+  const handleSubmit = async (data: CreateCourseData | UpdateCourseData) => {
     setFormLoading(true);
     try {
-      await createCourse(data);
-      message.success('Tạo khóa học thành công');
-      emitCourseEvent('course.created', data as Record<string, unknown>);
-      setShowForm(false);
+      if (editingCourse) {
+        await updateCourse(editingCourse.id, data as UpdateCourseData);
+        message.success('Cập nhật khóa học thành công');
+        emitCourseEvent('course.updated', data as Record<string, unknown>);
+      } else {
+        await createCourse(data as CreateCourseData);
+        message.success('Tạo khóa học thành công');
+        emitCourseEvent('course.created', data as Record<string, unknown>);
+      }
+      handleCloseForm();
       fetchCourses();
     } catch (err) {
       message.error((err as Error).message);
@@ -61,7 +82,7 @@ const CourseListSlot: React.FC = () => {
   return (
     <div style={{ padding: 24 }}>
       <Space style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenCreate}>
           Thêm khóa học
         </Button>
       </Space>
@@ -71,22 +92,23 @@ const CourseListSlot: React.FC = () => {
         total={total}
         page={page}
         loading={loading}
-        onEdit={() => setShowForm(true)}
+        onEdit={handleOpenEdit}
         onDelete={handleDelete}
         onPageChange={setPage}
       />
 
       <Modal
-        title="Thêm khóa học"
+        title={editingCourse ? 'Sửa khóa học' : 'Thêm khóa học'}
         open={showForm}
-        onCancel={() => setShowForm(false)}
+        onCancel={handleCloseForm}
         footer={null}
         destroyOnClose
       >
         <CourseForm
+          initialValues={editingCourse ?? undefined}
           loading={formLoading}
-          onSubmit={handleCreate}
-          onCancel={() => setShowForm(false)}
+          onSubmit={handleSubmit}
+          onCancel={handleCloseForm}
         />
       </Modal>
     </div>

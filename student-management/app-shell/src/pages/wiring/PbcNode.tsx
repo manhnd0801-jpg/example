@@ -1,25 +1,28 @@
 // Wiring canvas — Custom PBC node
-// Hiển thị tên PBC + danh sách emits (source handles) + listens (target handles)
+// Hiển thị tên PBC + version + danh sách emits (source handles) + listens (target handles)
 import React from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Tag, Tooltip } from "antd";
-import { ArrowRightOutlined, ArrowLeftOutlined } from "@ant-design/icons";
+import { ArrowRightOutlined, ArrowLeftOutlined, WarningOutlined } from "@ant-design/icons";
 import type { WiringNodeData } from "./types";
 
 const HANDLE_GAP = 28; // px giữa các handle
 
 export const PbcNode: React.FC<NodeProps> = ({ data, selected }) => {
   const d = data as unknown as WiringNodeData;
+  const hasMismatch = d.versionMismatch === true;
 
   return (
     <div
       style={{
         background: "#fff",
-        border: `2px solid ${selected ? "#1677ff" : d.color}`,
+        border: `2px solid ${selected ? "#1677ff" : hasMismatch ? "#ff4d4f" : d.color}`,
         borderRadius: 10,
         minWidth: 220,
         boxShadow: selected
           ? "0 0 0 3px rgba(22,119,255,0.2)"
+          : hasMismatch
+          ? "0 0 0 3px rgba(255,77,79,0.15)"
           : "0 2px 8px rgba(0,0,0,0.12)",
         fontFamily: "Inter, sans-serif",
         fontSize: 12,
@@ -29,18 +32,60 @@ export const PbcNode: React.FC<NodeProps> = ({ data, selected }) => {
       {/* Header */}
       <div
         style={{
-          background: d.color,
+          background: hasMismatch ? "#ff4d4f" : d.color,
           borderRadius: "8px 8px 0 0",
           padding: "8px 12px",
           color: "#fff",
-          fontWeight: 600,
-          fontSize: 13,
-          letterSpacing: 0.2,
         }}
       >
-        {d.displayName}
-        <div style={{ fontSize: 10, opacity: 0.85, fontWeight: 400, marginTop: 2 }}>
-          {d.pbcId}
+        {/* Tên PBC */}
+        <div style={{ fontWeight: 600, fontSize: 13, letterSpacing: 0.2 }}>
+          {d.displayName}
+        </div>
+
+        {/* pbcId + version */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 4,
+            gap: 6,
+          }}
+        >
+          <span style={{ fontSize: 10, opacity: 0.85 }}>{d.pbcId}</span>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {/* Version badge */}
+            <span
+              style={{
+                background: "rgba(255,255,255,0.25)",
+                borderRadius: 4,
+                padding: "1px 6px",
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: 0.3,
+              }}
+            >
+              v{d.version}
+            </span>
+
+            {/* Cảnh báo version mismatch */}
+            {hasMismatch && d.registryVersion && (
+              <Tooltip
+                title={
+                  <span>
+                    Version mismatch!<br />
+                    Wiring: <b>v{d.version}</b><br />
+                    Registry: <b>v{d.registryVersion}</b><br />
+                    Cần cập nhật app-wiring.json
+                  </span>
+                }
+              >
+                <WarningOutlined style={{ fontSize: 12, color: "#fff" }} />
+              </Tooltip>
+            )}
+          </div>
         </div>
       </div>
 
@@ -63,7 +108,7 @@ export const PbcNode: React.FC<NodeProps> = ({ data, selected }) => {
             >
               <ArrowRightOutlined style={{ fontSize: 9 }} /> Emits
             </div>
-            {d.emits.map((port, i) => (
+            {d.emits.map((port) => (
               <div
                 key={port.id}
                 style={{
@@ -76,10 +121,18 @@ export const PbcNode: React.FC<NodeProps> = ({ data, selected }) => {
                   minHeight: HANDLE_GAP,
                 }}
               >
-                <Tooltip title={port.topic} placement="left" mouseEnterDelay={0.5}>
+                <Tooltip title={port.topic} placement="left" mouseEnterDelay={0.4}>
                   <Tag
                     color="blue"
-                    style={{ margin: 0, fontSize: 11, cursor: "default", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    style={{
+                      margin: 0,
+                      fontSize: 11,
+                      cursor: "default",
+                      maxWidth: 160,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
                   >
                     {port.label}
                   </Tag>
@@ -154,10 +207,18 @@ export const PbcNode: React.FC<NodeProps> = ({ data, selected }) => {
                     zIndex: 10,
                   }}
                 />
-                <Tooltip title={port.topic} placement="right" mouseEnterDelay={0.5}>
+                <Tooltip title={port.topic} placement="right" mouseEnterDelay={0.4}>
                   <Tag
                     color="green"
-                    style={{ margin: 0, fontSize: 11, cursor: "default", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    style={{
+                      margin: 0,
+                      fontSize: 11,
+                      cursor: "default",
+                      maxWidth: 160,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
                   >
                     {port.label}
                   </Tag>

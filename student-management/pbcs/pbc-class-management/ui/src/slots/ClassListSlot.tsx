@@ -1,13 +1,12 @@
-// AI-GENERATED
 // Slot: class-list — thin wrapper, orchestrate ClassTable component
 import React, { useEffect, useState } from 'react';
 import { Button, Modal, Space, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import ClassTable from '../components/business/ClassTable';
 import ClassForm from '../components/business/ClassForm';
-import { listClasses, deleteClass } from '../services/pbc-api';
+import { listClasses, deleteClass, createClass, updateClass } from '../services/pbc-api';
 import { emitClassEvent } from '../hooks/event-handlers';
-import type { ClassDto, CreateClassData } from '../types';
+import type { ClassDto, CreateClassData, UpdateClassData } from '../types';
 
 const ClassListSlot: React.FC = () => {
   const [classes, setClasses] = useState<ClassDto[]>([]);
@@ -15,6 +14,7 @@ const ClassListSlot: React.FC = () => {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingClass, setEditingClass] = useState<ClassDto | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
   const fetchClasses = async (p = page) => {
@@ -32,6 +32,21 @@ const ClassListSlot: React.FC = () => {
 
   useEffect(() => { fetchClasses(); }, [page]);
 
+  const handleOpenCreate = () => {
+    setEditingClass(null);
+    setShowForm(true);
+  };
+
+  const handleOpenEdit = (cls: ClassDto) => {
+    setEditingClass(cls);
+    setShowForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setEditingClass(null);
+  };
+
   const handleDelete = async (classId: string) => {
     try {
       await deleteClass(classId);
@@ -43,10 +58,31 @@ const ClassListSlot: React.FC = () => {
     }
   };
 
+  const handleSubmit = async (data: CreateClassData | UpdateClassData) => {
+    setFormLoading(true);
+    try {
+      if (editingClass) {
+        await updateClass(editingClass.id, data as UpdateClassData);
+        message.success('Cập nhật lớp học thành công');
+        emitClassEvent('class.updated', data as Record<string, unknown>);
+      } else {
+        await createClass(data as CreateClassData);
+        message.success('Tạo lớp học thành công');
+        emitClassEvent('class.created', data as Record<string, unknown>);
+      }
+      handleCloseForm();
+      fetchClasses();
+    } catch (err) {
+      message.error((err as Error).message);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   return (
     <div style={{ padding: 24 }}>
       <Space style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowForm(true)}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenCreate}>
           Thêm lớp học
         </Button>
       </Space>
@@ -56,37 +92,24 @@ const ClassListSlot: React.FC = () => {
         total={total}
         page={page}
         loading={loading}
-        onEdit={() => setShowForm(true)}
+        onEdit={handleOpenEdit}
         onDelete={handleDelete}
         onAssign={() => {}}
         onPageChange={setPage}
       />
 
       <Modal
-        title="Thêm lớp học"
+        title={editingClass ? 'Sửa lớp học' : 'Thêm lớp học'}
         open={showForm}
-        onCancel={() => setShowForm(false)}
+        onCancel={handleCloseForm}
         footer={null}
         destroyOnClose
       >
         <ClassForm
+          initialValues={editingClass ?? undefined}
           loading={formLoading}
-          onSubmit={async (data) => {
-            setFormLoading(true);
-            try {
-              const { createClass } = await import('../services/pbc-api');
-              await createClass(data as CreateClassData);
-              message.success('Tạo lớp học thành công');
-              emitClassEvent('class.created', data as Record<string, unknown>);
-              setShowForm(false);
-              fetchClasses();
-            } catch (err) {
-              message.error((err as Error).message);
-            } finally {
-              setFormLoading(false);
-            }
-          }}
-          onCancel={() => setShowForm(false)}
+          onSubmit={handleSubmit}
+          onCancel={handleCloseForm}
         />
       </Modal>
     </div>

@@ -9,6 +9,9 @@ export interface WiringPort {
 
 export interface WiringNodeData {
   pbcId: string;
+  version: string;           // version trong app-wiring.json
+  registryVersion?: string;  // version trong pbc-registry.json (để cross-check)
+  versionMismatch?: boolean; // true nếu wiring version ≠ registry version
   displayName: string;
   emits: WiringPort[];
   listens: WiringPort[];

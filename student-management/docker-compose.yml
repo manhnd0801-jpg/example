@@ -224,6 +224,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    develop:
+      watch:
+        - action: rebuild
+          path: ./pbcs/pbc-student-management/ui/src
+          ignore:
+            - node_modules
 
   # ── pbc-class-management ──────────────────────────────────────────────────────
   pbc-class-db:
@@ -291,6 +297,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    develop:
+      watch:
+        - action: rebuild
+          path: ./pbcs/pbc-class-management/ui/src
+          ignore:
+            - node_modules
 
   # ── pbc-course-management ─────────────────────────────────────────────────────
   pbc-course-db:
@@ -358,6 +370,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    develop:
+      watch:
+        - action: rebuild
+          path: ./pbcs/pbc-course-management/ui/src
+          ignore:
+            - node_modules
 
   # ── pbc-subject-management ────────────────────────────────────────────────────
   pbc-subject-db:
@@ -425,6 +443,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    develop:
+      watch:
+        - action: rebuild
+          path: ./pbcs/pbc-subject-management/ui/src
+          ignore:
+            - node_modules
 
   # ── pbc-notification ──────────────────────────────────────────────────────────
   pbc-notification-db:
@@ -529,6 +553,12 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
+    develop:
+      watch:
+        - action: rebuild
+          path: ./app-shell/src
+          ignore:
+            - node_modules
 
 volumes:
   kafka_data:
