@@ -1,0 +1,222 @@
+# AI-GENERATED
+asyncapi: 2.6.0
+info:
+  title: Student Management Events
+  version: 1.0.0
+  description: Event specifications for Student Management PBC
+  contact:
+    name: Student Management Team
+    email: support@example.com
+
+servers:
+  kafka:
+    url: kafka:29092
+    protocol: kafka
+    description: Kafka broker for event communication
+
+defaultContentType: application/json
+
+channels:
+  pbc.student-management.student.created:
+    description: Published when a new student is created
+    publish:
+      operationId: publishStudentCreated
+      message:
+        $ref: '#/components/messages/StudentCreated'
+
+  pbc.student-management.student.updated:
+    description: Published when a student record is updated
+    publish:
+      operationId: publishStudentUpdated
+      message:
+        $ref: '#/components/messages/StudentUpdated'
+
+  pbc.student-management.student.deleted:
+    description: Published when a student is deleted (soft delete)
+    publish:
+      operationId: publishStudentDeleted
+      message:
+        $ref: '#/components/messages/StudentDeleted'
+
+  pbc.student-management.student.status-changed:
+    description: Published when a student's status changes
+    publish:
+      operationId: publishStudentStatusChanged
+      message:
+        $ref: '#/components/messages/StudentStatusChanged'
+
+  pbc.class-management.student.assigned-to-class:
+    description: Consumed when a student is assigned to a class
+    subscribe:
+      operationId: handleStudentAssignedToClass
+      message:
+        $ref: '#/components/messages/StudentAssignedToClass'
+
+components:
+  messages:
+    StudentCreated:
+      name: StudentCreated
+      title: Student Created Event
+      summary: Event published when a new student is created
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: StudentCreatedExample
+          summary: Example of student created event
+          payload:
+            eventId: "evt_123e4567-e89b-12d3-a456-426614174000"
+            eventType: "pbc.student-management.student.created"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T10:30:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-123"
+            data:
+              studentId: "123e4567-e89b-12d3-a456-426614174000"
+              studentCode: "STU2024001"
+              fullName: "Nguyen Van A"
+              classId: "456e7890-e89b-12d3-a456-426614174001"
+              tenantId: "tenant-001"
+
+    StudentUpdated:
+      name: StudentUpdated
+      title: Student Updated Event
+      summary: Event published when a student record is updated
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: StudentUpdatedExample
+          summary: Example of student updated event
+          payload:
+            eventId: "evt_456e7890-e89b-12d3-a456-426614174001"
+            eventType: "pbc.student-management.student.updated"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T10:35:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-124"
+            data:
+              studentId: "123e4567-e89b-12d3-a456-426614174000"
+              updatedFields:
+                fullName: "Nguyen Van A Updated"
+                phone: "0123456789"
+              tenantId: "tenant-001"
+
+    StudentDeleted:
+      name: StudentDeleted
+      title: Student Deleted Event
+      summary: Event published when a student is deleted
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: StudentDeletedExample
+          summary: Example of student deleted event
+          payload:
+            eventId: "evt_789e0123-e89b-12d3-a456-426614174002"
+            eventType: "pbc.student-management.student.deleted"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T10:40:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-125"
+            data:
+              studentId: "123e4567-e89b-12d3-a456-426614174000"
+              studentCode: "STU2024001"
+              tenantId: "tenant-001"
+
+    StudentStatusChanged:
+      name: StudentStatusChanged
+      title: Student Status Changed Event
+      summary: Event published when a student's status changes
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: StudentStatusChangedExample
+          summary: Example of student status changed event
+          payload:
+            eventId: "evt_012e3456-e89b-12d3-a456-426614174003"
+            eventType: "pbc.student-management.student.status-changed"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T10:45:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-126"
+            data:
+              studentId: "123e4567-e89b-12d3-a456-426614174000"
+              oldStatus: "ACTIVE"
+              newStatus: "SUSPENDED"
+              tenantId: "tenant-001"
+
+    StudentAssignedToClass:
+      name: StudentAssignedToClass
+      title: Student Assigned to Class Event
+      summary: Event consumed when a student is assigned to a class
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: StudentAssignedToClassExample
+          summary: Example of student assigned to class event
+          payload:
+            eventId: "evt_345e6789-e89b-12d3-a456-426614174004"
+            eventType: "pbc.class-management.student.assigned-to-class"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T10:50:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-127"
+            data:
+              classId: "456e7890-e89b-12d3-a456-426614174001"
+              studentId: "123e4567-e89b-12d3-a456-426614174000"
+              classCode: "CS2024A"
+              className: "Computer Science 2024 A"
+              tenantId: "tenant-001"
+
+  schemas:
+    KafkaEnvelope:
+      type: object
+      required:
+        - eventId
+        - eventType
+        - schemaVersion
+        - occurredAt
+        - tenantId
+        - correlationId
+        - data
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Unique identifier for this event
+        eventType:
+          type: string
+          description: Type of event following pbc.{pbcId}.{aggregate}.{verb} pattern
+        schemaVersion:
+          type: string
+          description: Version of the event schema
+          default: "1.0"
+        occurredAt:
+          type: string
+          format: date-time
+          description: When the event occurred
+        tenantId:
+          type: string
+          description: Tenant identifier for multi-tenancy
+        correlationId:
+          type: string
+          description: Correlation ID for tracing related events
+        data:
+          type: object
+          description: Event-specific payload data
+
+  parameters:
+    tenantId:
+      description: Tenant identifier
+      schema:
+        type: string
+
+  operationTraits:
+    kafka:
+      bindings:
+        kafka:
+          groupId: cg.student-mgmt
+          clientId: pbc-student-management

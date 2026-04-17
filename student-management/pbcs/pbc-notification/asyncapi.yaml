@@ -1,0 +1,303 @@
+# AI-GENERATED
+asyncapi: 2.6.0
+info:
+  title: Notification & Audit Events
+  version: 1.0.0
+  description: Event specifications for Notification & Audit PBC (Pure Consumer)
+  contact:
+    name: Notification Team
+    email: support@example.com
+
+servers:
+  kafka:
+    url: kafka:29092
+    protocol: kafka
+    description: Kafka broker for event communication
+
+defaultContentType: application/json
+
+channels:
+  # Student Management Events (Consumed)
+  pbc.student-management.student.created:
+    description: Consumed when a new student is created
+    subscribe:
+      operationId: handleStudentCreated
+      message:
+        $ref: '#/components/messages/StudentCreated'
+
+  pbc.student-management.student.updated:
+    description: Consumed when a student is updated
+    subscribe:
+      operationId: handleStudentUpdated
+      message:
+        $ref: '#/components/messages/StudentUpdated'
+
+  pbc.student-management.student.deleted:
+    description: Consumed when a student is deleted
+    subscribe:
+      operationId: handleStudentDeleted
+      message:
+        $ref: '#/components/messages/StudentDeleted'
+
+  pbc.student-management.student.status-changed:
+    description: Consumed when a student's status changes
+    subscribe:
+      operationId: handleStudentStatusChanged
+      message:
+        $ref: '#/components/messages/StudentStatusChanged'
+
+  # Class Management Events (Consumed)
+  pbc.class-management.class.created:
+    description: Consumed when a new class is created
+    subscribe:
+      operationId: handleClassCreated
+      message:
+        $ref: '#/components/messages/ClassCreated'
+
+  pbc.class-management.class.updated:
+    description: Consumed when a class is updated
+    subscribe:
+      operationId: handleClassUpdated
+      message:
+        $ref: '#/components/messages/ClassUpdated'
+
+  pbc.class-management.student.assigned-to-class:
+    description: Consumed when a student is assigned to a class
+    subscribe:
+      operationId: handleStudentAssignedToClass
+      message:
+        $ref: '#/components/messages/StudentAssignedToClass'
+
+  pbc.class-management.student.removed-from-class:
+    description: Consumed when a student is removed from a class
+    subscribe:
+      operationId: handleStudentRemovedFromClass
+      message:
+        $ref: '#/components/messages/StudentRemovedFromClass'
+
+  # Course Management Events (Consumed)
+  pbc.course-management.course.created:
+    description: Consumed when a new course is created
+    subscribe:
+      operationId: handleCourseCreated
+      message:
+        $ref: '#/components/messages/CourseCreated'
+
+  pbc.course-management.course.updated:
+    description: Consumed when a course is updated
+    subscribe:
+      operationId: handleCourseUpdated
+      message:
+        $ref: '#/components/messages/CourseUpdated'
+
+  pbc.course-management.course.deleted:
+    description: Consumed when a course is deleted
+    subscribe:
+      operationId: handleCourseDeleted
+      message:
+        $ref: '#/components/messages/CourseDeleted'
+
+  # Subject Management Events (Consumed)
+  pbc.subject-management.subject.created:
+    description: Consumed when a new subject is created
+    subscribe:
+      operationId: handleSubjectCreated
+      message:
+        $ref: '#/components/messages/SubjectCreated'
+
+  pbc.subject-management.subject.updated:
+    description: Consumed when a subject is updated
+    subscribe:
+      operationId: handleSubjectUpdated
+      message:
+        $ref: '#/components/messages/SubjectUpdated'
+
+  pbc.subject-management.subject.assigned-to-class:
+    description: Consumed when a subject is assigned to a class
+    subscribe:
+      operationId: handleSubjectAssignedToClass
+      message:
+        $ref: '#/components/messages/SubjectAssignedToClass'
+
+  pbc.subject-management.subject.assigned-to-course:
+    description: Consumed when a subject is assigned to a course
+    subscribe:
+      operationId: handleSubjectAssignedToCourse
+      message:
+        $ref: '#/components/messages/SubjectAssignedToCourse'
+
+components:
+  messages:
+    # Student Management Messages
+    StudentCreated:
+      name: StudentCreated
+      title: Student Created Event (Consumed)
+      summary: Creates notification and audit log when student is created
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    StudentUpdated:
+      name: StudentUpdated
+      title: Student Updated Event (Consumed)
+      summary: Creates audit log when student is updated
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    StudentDeleted:
+      name: StudentDeleted
+      title: Student Deleted Event (Consumed)
+      summary: Creates notification and audit log when student is deleted
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    StudentStatusChanged:
+      name: StudentStatusChanged
+      title: Student Status Changed Event (Consumed)
+      summary: Creates notification and audit log when student status changes
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    # Class Management Messages
+    ClassCreated:
+      name: ClassCreated
+      title: Class Created Event (Consumed)
+      summary: Creates notification and audit log when class is created
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    ClassUpdated:
+      name: ClassUpdated
+      title: Class Updated Event (Consumed)
+      summary: Creates audit log when class is updated
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    StudentAssignedToClass:
+      name: StudentAssignedToClass
+      title: Student Assigned to Class Event (Consumed)
+      summary: Creates notification and audit log when student is assigned to class
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    StudentRemovedFromClass:
+      name: StudentRemovedFromClass
+      title: Student Removed from Class Event (Consumed)
+      summary: Creates notification and audit log when student is removed from class
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    # Course Management Messages
+    CourseCreated:
+      name: CourseCreated
+      title: Course Created Event (Consumed)
+      summary: Creates notification and audit log when course is created
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    CourseUpdated:
+      name: CourseUpdated
+      title: Course Updated Event (Consumed)
+      summary: Creates audit log when course is updated
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    CourseDeleted:
+      name: CourseDeleted
+      title: Course Deleted Event (Consumed)
+      summary: Creates audit log when course is deleted
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    # Subject Management Messages
+    SubjectCreated:
+      name: SubjectCreated
+      title: Subject Created Event (Consumed)
+      summary: Creates audit log when subject is created
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    SubjectUpdated:
+      name: SubjectUpdated
+      title: Subject Updated Event (Consumed)
+      summary: Creates audit log when subject is updated
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    SubjectAssignedToClass:
+      name: SubjectAssignedToClass
+      title: Subject Assigned to Class Event (Consumed)
+      summary: Creates notification and audit log when subject is assigned to class
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    SubjectAssignedToCourse:
+      name: SubjectAssignedToCourse
+      title: Subject Assigned to Course Event (Consumed)
+      summary: Creates audit log when subject is assigned to course
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+  schemas:
+    KafkaEnvelope:
+      type: object
+      required:
+        - eventId
+        - eventType
+        - schemaVersion
+        - occurredAt
+        - tenantId
+        - correlationId
+        - data
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Unique identifier for this event
+        eventType:
+          type: string
+          description: Type of event following pbc.{pbcId}.{aggregate}.{verb} pattern
+        schemaVersion:
+          type: string
+          description: Version of the event schema
+          default: "1.0"
+        occurredAt:
+          type: string
+          format: date-time
+          description: When the event occurred
+        tenantId:
+          type: string
+          description: Tenant identifier for multi-tenancy
+        correlationId:
+          type: string
+          description: Correlation ID for tracing related events
+        data:
+          type: object
+          description: Event-specific payload data
+
+  parameters:
+    tenantId:
+      description: Tenant identifier
+      schema:
+        type: string
+
+  operationTraits:
+    kafka:
+      bindings:
+        kafka:
+          groupId: cg.notification
+          clientId: pbc-notification

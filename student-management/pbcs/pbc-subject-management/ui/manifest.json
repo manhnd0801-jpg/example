@@ -1,0 +1,15 @@
+{
+  "pbcId": "subject-management",
+  "version": "1.0.0",
+  "scope": "pbc_subject_management",
+  "module": "./bootstrap",
+  "slots": [
+    { "id": "subject-list",   "component": "SubjectListSlot" },
+    { "id": "subject-form",   "component": "SubjectFormSlot" },
+    { "id": "subject-detail", "component": "SubjectDetailSlot" },
+    { "id": "subject-assign", "component": "SubjectAssignSlot" }
+  ],
+  "designTokens": ["--pbc-primary-color", "--pbc-subject-accent", "--pbc-border-radius", "--pbc-font-family"],
+  "defaultLocale": "vi",
+  "supportedLocales": ["vi", "en"]
+}

@@ -1,0 +1,438 @@
+# AI-GENERATED
+openapi: 3.1.0
+info:
+  title: Student Management API
+  description: API for managing student profiles, lifecycle, and data operations
+  version: 1.0.0
+  contact:
+    name: Student Management Team
+    email: support@example.com
+
+servers:
+  - url: http://localhost:3002/v1
+    description: Development server
+  - url: https://api.student-portal.com/v1
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the service
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /students:
+    get:
+      summary: List students
+      description: Retrieve a paginated list of students with optional filtering
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: search
+          in: query
+          description: Search in fullName or studentCode
+          schema:
+            type: string
+        - name: classId
+          in: query
+          description: Filter by class ID
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          description: Filter by student status
+          schema:
+            type: string
+            enum: [ACTIVE, SUSPENDED, GRADUATED, DROPPED_OUT]
+        - name: courseId
+          in: query
+          description: Filter by course ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of students
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+              example:
+                data:
+                  students:
+                    - id: "123e4567-e89b-12d3-a456-426614174000"
+                      studentCode: "STU2024001"
+                      fullName: "Nguyen Van A"
+                      status: "ACTIVE"
+                      classId: "456e7890-e89b-12d3-a456-426614174001"
+                  pagination:
+                    page: 1
+                    pageSize: 20
+                    total: 150
+                    totalPages: 8
+                metadata:
+                  timestamp: "2024-01-15T10:30:00Z"
+                  requestId: "req_abc123"
+                  correlationId: "corr_xyz789"
+                  tenantId: "tenant-001"
+
+    post:
+      summary: Create student
+      description: Create a new student record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexiblePayload'
+            example:
+              data:
+                fullName: "Nguyen Van B"
+                dateOfBirth: "2000-05-15"
+                gender: "MALE"
+                address: "123 Main St, Ho Chi Minh City"
+                phone: "0123456789"
+                email: "nguyenvanb@example.com"
+                classId: "456e7890-e89b-12d3-a456-426614174001"
+                enrollmentDate: "2024-01-15"
+                attributes:
+                  emergencyContact: "0987654321"
+                  bloodType: "O+"
+              metadata:
+                requestId: "req_def456"
+                correlationId: "corr_abc123"
+                tenantId: "tenant-001"
+      responses:
+        '201':
+          description: Student created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /students/{id}:
+    get:
+      summary: Get student details
+      description: Retrieve detailed information about a specific student
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Student details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update student
+      description: Update an existing student record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexiblePayload'
+      responses:
+        '200':
+          description: Student updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete student
+      description: Soft delete a student record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Student deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /students/{id}/status:
+    patch:
+      summary: Change student status
+      description: Update the status of a student with validation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexiblePayload'
+            example:
+              data:
+                newStatus: "SUSPENDED"
+                reason: "Academic probation"
+              metadata:
+                requestId: "req_status123"
+                correlationId: "corr_status456"
+                tenantId: "tenant-001"
+      responses:
+        '200':
+          description: Status changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '422':
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /students/import:
+    post:
+      summary: Import students from Excel
+      description: Bulk import students from an Excel file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Excel file (.xlsx) containing student data
+      responses:
+        '200':
+          description: Import completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+              example:
+                data:
+                  imported: 45
+                  failed: 2
+                  errors:
+                    - row: 3
+                      error: "Invalid email format"
+                    - row: 7
+                      error: "Duplicate student code"
+                metadata:
+                  timestamp: "2024-01-15T10:30:00Z"
+                  requestId: "req_import123"
+
+  /students/export:
+    get:
+      summary: Export students to Excel
+      description: Export student data to an Excel file
+      parameters:
+        - name: classId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, SUSPENDED, GRADUATED, DROPPED_OUT]
+      responses:
+        '200':
+          description: Excel file download
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    FlexiblePayload:
+      type: object
+      required:
+        - data
+        - metadata
+      properties:
+        data:
+          type: object
+          description: Business data payload
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+
+    Metadata:
+      type: object
+      required:
+        - timestamp
+        - requestId
+        - tenantId
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+        correlationId:
+          type: string
+        traceId:
+          type: string
+        tenantId:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        data:
+          type: "null"
+        metadata:
+          allOf:
+            - $ref: '#/components/schemas/Metadata'
+            - type: object
+              properties:
+                error:
+                  type: object
+                  properties:
+                    code:
+                      type: string
+                    message:
+                      type: string
+                    details:
+                      type: object
+
+    Student:
+      type: object
+      required:
+        - id
+        - studentCode
+        - fullName
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        studentCode:
+          type: string
+          pattern: '^STU[0-9]{7}$'
+        fullName:
+          type: string
+          maxLength: 255
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
+        address:
+          type: string
+        phone:
+          type: string
+          pattern: '^[0-9]{10,11}$'
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, GRADUATED, DROPPED_OUT]
+        classId:
+          type: string
+          format: uuid
+        enrollmentDate:
+          type: string
+          format: date
+        graduationDate:
+          type: string
+          format: date
+        attributes:
+          type: object
+          description: Extensible JSON attributes
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time

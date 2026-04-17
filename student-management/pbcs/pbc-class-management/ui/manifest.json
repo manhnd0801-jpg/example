@@ -1,0 +1,15 @@
+{
+  "pbcId": "class-management",
+  "version": "1.0.0",
+  "scope": "pbc_class_management",
+  "module": "./bootstrap",
+  "slots": [
+    { "id": "class-list",   "component": "ClassListSlot" },
+    { "id": "class-form",   "component": "ClassFormSlot" },
+    { "id": "class-detail", "component": "ClassDetailSlot" },
+    { "id": "class-assign", "component": "ClassAssignSlot" }
+  ],
+  "designTokens": ["--pbc-primary-color", "--pbc-class-accent", "--pbc-border-radius", "--pbc-font-family"],
+  "defaultLocale": "vi",
+  "supportedLocales": ["vi", "en"]
+}

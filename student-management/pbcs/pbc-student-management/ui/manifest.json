@@ -1,0 +1,21 @@
+{
+  "pbcId": "student-management",
+  "version": "1.0.0",
+  "scope": "pbc_student_management",
+  "module": "./bootstrap",
+  "slots": [
+    { "id": "student-list",   "component": "StudentListSlot" },
+    { "id": "student-form",   "component": "StudentFormSlot" },
+    { "id": "student-detail", "component": "StudentDetailSlot" },
+    { "id": "student-status", "component": "StudentStatusSlot" }
+  ],
+  "designTokens": ["--pbc-primary-color", "--pbc-student-accent", "--pbc-border-radius", "--pbc-font-family"],
+  "defaultLocale": "vi",
+  "supportedLocales": ["vi", "en"],
+  "requiredPermissions": ["student:read", "student:write", "student:delete"],
+  "requiredEvents": [
+    "pbc.student-management.student.created",
+    "pbc.student-management.student.updated",
+    "pbc.student-management.student.status-changed"
+  ]
+}

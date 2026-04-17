@@ -1,153 +1,60 @@
 // AI-GENERATED
-import React, { Suspense, lazy } from "react";
+import React from "react";
 import ReactDOM from "react-dom/client";
-import { ConfigProvider, Spin, Result, Button, theme } from "antd";
-import viVN from "antd/locale/vi_VN";
 import { Shell } from "./layout/Shell";
 import { guardRoute } from "./guards/auth-guard";
+import { getEnabledPBCs, mountPBC } from "./core/pbc-loader";
 import { appContract } from "./config/app-contract";
-import { getPBCByRoute, importFromRemote, getEnabledPBCs } from "./core/pbc-loader";
-import type { PBCEntry } from "./core/pbc-loader";
 
-const TENANT_ID = import.meta.env.VITE_TENANT_ID ?? "dev-tenant";
-
-// ── Loading fallback ────────────────────────────────────────────────────────
-const LoadingFallback = ({ tip }: { tip?: string }) => (
-  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
-    <Spin size="large" tip={tip ?? "Đang tải..."} />
-  </div>
-);
-
-// ── Lazy load PBC slot ──────────────────────────────────────────────────────
-function RemotePBCSlot({ entry }: { entry: PBCEntry }) {
-  const LazySlot = lazy(() =>
-    importFromRemote<React.ComponentType>(entry, entry.module).then((C) => ({
-      default: C,
-    }))
-  );
-  return (
-    <Suspense fallback={<LoadingFallback tip={`Đang tải ${entry.pbcId}...`} />}>
-      <LazySlot />
-    </Suspense>
-  );
-}
-
-// ── Login page ──────────────────────────────────────────────────────────────
-function LoginPage({ authEntry }: { authEntry: PBCEntry }) {
-  const LazyLoginSlot = lazy(() =>
-    importFromRemote<React.ComponentType<{
-      tenantId: string;
-      onLoginSuccess: (data: { accessToken: string; refreshToken: string; user: unknown }) => void;
-    }>>(authEntry, "./LoginSlot").then((C) => ({ default: C }))
-  );
-
-  const handleLoginSuccess = (data: { accessToken: string; refreshToken: string; user?: unknown }) => {
-    localStorage.setItem("accessToken", data.accessToken);
-    localStorage.setItem("refreshToken", data.refreshToken);
-    localStorage.setItem("tenantId", TENANT_ID);
-
-    // Map user object sang format đầy đủ cho Navbar và ProfileSlot
-    if (data.user) {
-      const u = data.user as {
-        id?: string; username?: string; role?: string;
-        email?: string; fullName?: string; status?: string;
-      };
-      const userInfo = {
-        userId:   u.id       ?? "",
-        username: u.username ?? "",
-        role:     u.role     ?? "",
-        email:    u.email    ?? "",
-        fullName: u.fullName ?? "",
-        status:   u.status   ?? "",
-      };
-      sessionStorage.setItem("currentUser", JSON.stringify(userInfo));
-      window.dispatchEvent(new CustomEvent("shell:user-changed", { detail: userInfo }));
-    }
-
-    const returnTo = sessionStorage.getItem("returnTo") ?? appContract.appShell.defaultRoute;
-    sessionStorage.removeItem("returnTo");
-    window.location.href = returnTo;
-  };
-
-  return (
-    <ConfigProvider
-      locale={viVN}
-      theme={{
-        algorithm: theme.defaultAlgorithm,
-        token: { colorPrimary: appContract.theme.primaryColor },
-      }}
-    >
-      <Suspense fallback={<LoadingFallback tip="Đang tải trang đăng nhập..." />}>
-        <LazyLoginSlot tenantId={TENANT_ID} onLoginSuccess={handleLoginSuccess} />
-      </Suspense>
-    </ConfigProvider>
-  );
-}
-
-// ── Dashboard welcome ───────────────────────────────────────────────────────
-function Dashboard() {
-  return (
-    <Result
-      icon={<span style={{ fontSize: 64 }}>🎓</span>}
-      title={`Chào mừng đến ${appContract.name}`}
-      subTitle="Chọn module từ sidebar để bắt đầu làm việc."
-      extra={
-        <Button type="primary" href="/students">
-          Quản lý Sinh viên
-        </Button>
-      }
-    />
-  );
-}
-
-// ── Bootstrap ───────────────────────────────────────────────────────────────
-function bootstrap() {
-  const pathname = window.location.pathname;
+async function bootstrap() {
   const isAuthenticated = !!localStorage.getItem("accessToken");
-  const root = ReactDOM.createRoot(document.getElementById("root")!);
+  const pathname = window.location.pathname;
+  const isLoginRoute = pathname === "/login" || pathname === "/" || pathname === "";
 
-  // Route /login
-  if (pathname === "/login" || pathname.startsWith("/login/")) {
-    const authEntry = getEnabledPBCs().find((p) => p.pbcId === "auth");
-    if (!authEntry) {
-      root.render(
-        <Result
-          status="error"
-          title="Lỗi cấu hình"
-          subTitle="Không tìm thấy pbc-auth trong registry. Kiểm tra pbc-registry.json."
-        />
-      );
-      return;
+  // Guard: chưa auth và không phải login → redirect
+  guardRoute(pathname, isAuthenticated, () => {
+    if (!isLoginRoute) {
+      window.location.replace("/login");
     }
-    root.render(
-      <React.StrictMode>
-        <LoginPage authEntry={authEntry} />
-      </React.StrictMode>
-    );
-    return;
-  }
+  });
 
-  // Chưa auth → redirect /login
-  if (!isAuthenticated) {
-    sessionStorage.setItem("returnTo", pathname);
-    window.location.href = "/login";
-    return;
-  }
+  const pbcs = getEnabledPBCs();
+  const matched = isLoginRoute
+    ? pbcs.find((p) => p.pbcId === "pbc-auth")
+    : pbcs.find((p) => pathname.startsWith(p.routePrefix));
 
-  // Đã auth → render Shell
-  const matchedPBC = getPBCByRoute(pathname);
+  const root = ReactDOM.createRoot(document.getElementById("root")!);
 
   root.render(
     <React.StrictMode>
-      <Shell>
-        {matchedPBC ? (
-          <RemotePBCSlot entry={matchedPBC} />
-        ) : (
-          <Dashboard />
-        )}
-      </Shell>
+      {isLoginRoute && !isAuthenticated ? (
+        <div
+          ref={(el: HTMLDivElement | null) => {
+            if (el && !el.hasChildNodes() && matched) {
+              mountPBC(matched, el).catch(console.error);
+            }
+          }}
+        />
+      ) : (
+        <Shell>
+          {matched ? (
+            <div
+              ref={(el: HTMLDivElement | null) => {
+                if (el && !el.hasChildNodes()) {
+                  mountPBC(matched, el).catch(console.error);
+                }
+              }}
+            />
+          ) : (
+            <div style={{ padding: 24 }}>
+              <h2>Chào mừng đến {appContract.name}</h2>
+              <p>Chọn module từ sidebar để bắt đầu.</p>
+            </div>
+          )}
+        </Shell>
+      )}
     </React.StrictMode>
   );
 }
 
-bootstrap();
+bootstrap().catch(console.error);

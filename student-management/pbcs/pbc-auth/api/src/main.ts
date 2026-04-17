@@ -17,7 +17,10 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors();
+  app.enableCors({
+    origin: (process.env.CORS_ORIGIN || 'http://localhost:3011,http://localhost:3000').split(','),
+    credentials: true,
+  });
 
   const port = parseInt(process.env.PORT ?? '3001', 10);
   await app.listen(port);

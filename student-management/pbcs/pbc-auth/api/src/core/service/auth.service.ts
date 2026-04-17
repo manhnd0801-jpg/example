@@ -36,7 +36,8 @@ export class AuthService {
     correlationId: string,
   ): Promise<LoginResult> {
     const user = await this.userRepo.findOne({
-      where: { username, tenantId, deletedAt: undefined },
+      where: { username, tenantId },
+      relations: ['role'],
     });
 
     if (!user) throw new UnauthorizedException('Tên đăng nhập hoặc mật khẩu không đúng');

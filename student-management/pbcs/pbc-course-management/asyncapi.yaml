@@ -1,0 +1,190 @@
+# AI-GENERATED
+asyncapi: 2.6.0
+info:
+  title: Course Management Events
+  version: 1.0.0
+  description: Event specifications for Course Management PBC
+  contact:
+    name: Course Management Team
+    email: support@example.com
+
+servers:
+  kafka:
+    url: kafka:29092
+    protocol: kafka
+    description: Kafka broker for event communication
+
+defaultContentType: application/json
+
+channels:
+  pbc.course-management.course.created:
+    description: Published when a new course is created
+    publish:
+      operationId: publishCourseCreated
+      message:
+        $ref: '#/components/messages/CourseCreated'
+
+  pbc.course-management.course.updated:
+    description: Published when a course is updated
+    publish:
+      operationId: publishCourseUpdated
+      message:
+        $ref: '#/components/messages/CourseUpdated'
+
+  pbc.course-management.course.deleted:
+    description: Published when a course is deleted
+    publish:
+      operationId: publishCourseDeleted
+      message:
+        $ref: '#/components/messages/CourseDeleted'
+
+  pbc.subject-management.subject.assigned-to-course:
+    description: Consumed when a subject is assigned to a course
+    subscribe:
+      operationId: handleSubjectAssignedToCourse
+      message:
+        $ref: '#/components/messages/SubjectAssignedToCourse'
+
+components:
+  messages:
+    CourseCreated:
+      name: CourseCreated
+      title: Course Created Event
+      summary: Event published when a new course is created
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: CourseCreatedExample
+          summary: Example of course created event
+          payload:
+            eventId: "evt_789e0123-e89b-12d3-a456-426614174002"
+            eventType: "pbc.course-management.course.created"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T12:00:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-301"
+            data:
+              courseId: "789e0123-e89b-12d3-a456-426614174002"
+              courseCode: "CS2024"
+              courseName: "Computer Science Program 2024"
+              tenantId: "tenant-001"
+
+    CourseUpdated:
+      name: CourseUpdated
+      title: Course Updated Event
+      summary: Event published when a course is updated
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: CourseUpdatedExample
+          summary: Example of course updated event
+          payload:
+            eventId: "evt_890e1234-e89b-12d3-a456-426614174003"
+            eventType: "pbc.course-management.course.updated"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T12:05:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-302"
+            data:
+              courseId: "789e0123-e89b-12d3-a456-426614174002"
+              updatedFields:
+                totalCredits: 150
+                description: "Updated program description"
+              tenantId: "tenant-001"
+
+    CourseDeleted:
+      name: CourseDeleted
+      title: Course Deleted Event
+      summary: Event published when a course is deleted
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: CourseDeletedExample
+          summary: Example of course deleted event
+          payload:
+            eventId: "evt_901e2345-e89b-12d3-a456-426614174004"
+            eventType: "pbc.course-management.course.deleted"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T12:10:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-303"
+            data:
+              courseId: "789e0123-e89b-12d3-a456-426614174002"
+              tenantId: "tenant-001"
+
+    SubjectAssignedToCourse:
+      name: SubjectAssignedToCourse
+      title: Subject Assigned to Course Event (Consumed)
+      summary: Event consumed when a subject is assigned to a course
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: SubjectAssignedToCourseExample
+          summary: Example of subject assigned to course event
+          payload:
+            eventId: "evt_012e3456-e89b-12d3-a456-426614174005"
+            eventType: "pbc.subject-management.subject.assigned-to-course"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T12:15:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-304"
+            data:
+              subjectId: "012e3456-e89b-12d3-a456-426614174003"
+              courseId: "789e0123-e89b-12d3-a456-426614174002"
+              semesterId: 1
+              isRequired: true
+              tenantId: "tenant-001"
+
+  schemas:
+    KafkaEnvelope:
+      type: object
+      required:
+        - eventId
+        - eventType
+        - schemaVersion
+        - occurredAt
+        - tenantId
+        - correlationId
+        - data
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Unique identifier for this event
+        eventType:
+          type: string
+          description: Type of event following pbc.{pbcId}.{aggregate}.{verb} pattern
+        schemaVersion:
+          type: string
+          description: Version of the event schema
+          default: "1.0"
+        occurredAt:
+          type: string
+          format: date-time
+          description: When the event occurred
+        tenantId:
+          type: string
+          description: Tenant identifier for multi-tenancy
+        correlationId:
+          type: string
+          description: Correlation ID for tracing related events
+        data:
+          type: object
+          description: Event-specific payload data
+
+  parameters:
+    tenantId:
+      description: Tenant identifier
+      schema:
+        type: string
+
+  operationTraits:
+    kafka:
+      bindings:
+        kafka:
+          groupId: cg.course-mgmt
+          clientId: pbc-course-management

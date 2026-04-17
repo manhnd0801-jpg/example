@@ -1,0 +1,112 @@
+{
+  "pbcId": "class-management",
+  "version": "1.0.0",
+  "name": "Class Management",
+  "description": "Quản lý lớp học bao gồm gán sinh viên, quản lý sức chứa và chuyển lớp. Xử lý logic nghiệp vụ về tổ chức lớp học và phân bổ sinh viên.",
+  "category": "Academic",
+  "domain": "class-organization",
+  "type": "full",
+
+  "sla": {
+    "availability": 99.9,
+    "responseTimeMs": 250,
+    "throughput": 800
+  },
+
+  "technologies": {
+    "ui": "react",
+    "api": "nodejs",
+    "db": "postgresql",
+    "uiLibrary": "ant-design",
+    "messaging": "kafka"
+  },
+
+  "messaging": {
+    "broker": "kafka",
+    "jetstream": false,
+    "topicPrefix": "pbc.class-management",
+    "notes": "Dùng Kafka thay NATS vì toàn bộ student-management-portal đã chọn Kafka làm event bus chuẩn. Consumer group: cg.class-mgmt"
+  },
+
+  "slots": ["class-list", "class-form", "class-detail", "class-assign"],
+
+  "hooks": {
+    "before": ["validatePayload", "enforceTenant", "validateCapacity"],
+    "after": ["auditLog", "emitDomainEvent", "updateCapacityCounter"]
+  },
+
+  "capabilities": {
+    "ui": {
+      "widgets": ["class-capacity-meter", "student-assignment-panel"],
+      "slots": ["class-list", "class-form", "class-detail", "class-assign"],
+      "designTokens": ["--pbc-primary-color", "--pbc-class-accent", "--pbc-border-radius", "--pbc-font-family"],
+      "uiLibrary": "ant-design"
+    },
+    "api": {
+      "supportsMetadata": true,
+      "endpoints": [
+        "/v1/classes",
+        "/v1/classes/:id",
+        "/v1/classes/:id/students",
+        "/v1/classes/:id/students/:studentId",
+        "/v1/classes/:id/transfer"
+      ]
+    },
+    "uiInteraction": {
+      "outputs": ["pbc.class-management.class.selected"],
+      "inputs": ["pbc.student-management.student.created", "pbc.subject-management.subject.assigned-to-class"]
+    },
+    "businessEvents": {
+      "produces": [
+        "pbc.class-management.class.created",
+        "pbc.class-management.class.updated",
+        "pbc.class-management.student.assigned-to-class",
+        "pbc.class-management.student.removed-from-class"
+      ],
+      "consumes": [
+        "pbc.student-management.student.created",
+        "pbc.student-management.student.deleted",
+        "pbc.student-management.student.status-changed",
+        "pbc.subject-management.subject.assigned-to-class"
+      ]
+    }
+  },
+
+  "permissions": [
+    "class:read",
+    "class:write",
+    "class:delete",
+    "class:assign-student",
+    "class:transfer-student"
+  ],
+
+  "properties": {
+    "tenantResolution": "jwt-claim",
+    "dockerLayout": "docker/Dockerfile.ui and docker/Dockerfile.api",
+    "dataClassification": "internal — class data không nhạy cảm nhưng cần bảo mật tenant; attributes JSON có thể chứa thông tin tổ chức",
+    "requiredEnvVars": [
+      "DATABASE_URL",
+      "JWT_SECRET",
+      "KAFKA_BROKERS",
+      "KAFKA_GROUP_ID",
+      "PORT",
+      "CORS_ORIGIN"
+    ],
+    "apiAuthNotes": "GET /health là public. Tất cả endpoint khác yêu cầu JWT. CRUD operations yêu cầu role ADMIN hoặc ACADEMIC_STAFF."
+  },
+
+  "config": {
+    "webhookUrl": "",
+    "aiPromptRegistry": ""
+  },
+
+  "i18n": {
+    "defaultLocale": "vi",
+    "supportedLocales": ["vi", "en"]
+  },
+
+  "extensions": {
+    "supportAIHooks": true,
+    "allowCustomSlots": false
+  }
+}

@@ -1,6 +1,6 @@
 // AI-GENERATED
-import registry from "../../../pbc-registry.json";
-import { REMOTE_IMPORT_MAP } from "./remote-imports";
+// Vite Module Federation — static remotes, dynamic mount
+import registry from "../../pbc-registry.json";
 
 export interface PBCEntry {
   pbcId: string;
@@ -9,6 +9,7 @@ export interface PBCEntry {
   scope: string;
   module: string;
   routePrefix: string;
+  label?: string;
   enabled: boolean;
 }
 
@@ -16,42 +17,41 @@ export function getEnabledPBCs(): PBCEntry[] {
   return registry.pbcList.filter((pbc) => pbc.enabled) as PBCEntry[];
 }
 
-export function getPBCByRoute(pathname: string): PBCEntry | undefined {
-  return getEnabledPBCs().find(
-    (pbc) =>
-      pbc.pbcId !== "auth" &&
-      (pathname === pbc.routePrefix || pathname.startsWith(pbc.routePrefix + "/"))
-  );
-}
+// Map scope → dynamic import factory
+// Vite MF yêu cầu import path phải là string literal tại build time
+const remoteImporters: Record<string, () => Promise<any>> = {
+  pbc_auth:               () => import("pbc_auth/bootstrap"),
+  pbc_student_management: () => import("pbc_student_management/bootstrap"),
+  pbc_class_management:   () => import("pbc_class_management/bootstrap"),
+  pbc_course_management:  () => import("pbc_course_management/bootstrap"),
+  pbc_subject_management: () => import("pbc_subject_management/bootstrap"),
+  pbc_notification:       () => import("pbc_notification/bootstrap"),
+};
 
-const moduleCache = new Map<string, unknown>();
-
-/**
- * Import exposed module từ PBC remote.
- * Dùng REMOTE_IMPORT_MAP với literal import strings để Vite transform đúng lúc build.
- */
-export async function importFromRemote<T = unknown>(
-  entry: PBCEntry,
-  modulePath: string
-): Promise<T> {
-  // Normalize module path: './LoginSlot' → 'LoginSlot'
-  const normalizedModule = modulePath.replace(/^\.\//, "");
-  const key = `${entry.scope}/${normalizedModule}`;
-  const cacheKey = key;
-
-  if (moduleCache.has(cacheKey)) {
-    return moduleCache.get(cacheKey) as T;
+export async function mountPBC(entry: PBCEntry, container: HTMLElement): Promise<void> {
+  const importer = remoteImporters[entry.scope];
+  if (!importer) {
+    container.innerHTML = `<div style="padding:16px;color:#cf1322">Unknown PBC scope: ${entry.scope}</div>`;
+    return;
   }
 
-  const importFn = REMOTE_IMPORT_MAP[key];
-  if (!importFn) {
-    throw new Error(
-      `[pbc-loader] No import registered for '${key}'. ` +
-      `Add it to src/core/remote-imports.ts as a literal import string.`
-    );
-  }
+  try {
+    const mod = await importer();
+    const Component = mod?.default;
 
-  const result = await importFn() as T;
-  moduleCache.set(cacheKey, result);
-  return result;
+    if (!Component) {
+      throw new Error(`"${entry.pbcId}" không có default export`);
+    }
+
+    const React = (await import("react")).default;
+    const { createRoot } = await import("react-dom/client");
+    createRoot(container).render(React.createElement(Component));
+  } catch (err) {
+    console.error(`[pbc-loader] Error mounting ${entry.pbcId}:`, err);
+    container.innerHTML = `
+      <div style="padding:16px;color:#cf1322;background:#fff2f0;border:1px solid #ffccc7;border-radius:4px;margin:16px">
+        <strong>Không thể tải module: ${entry.pbcId}</strong><br/>
+        <small>${(err as Error).message}</small>
+      </div>`;
+  }
 }

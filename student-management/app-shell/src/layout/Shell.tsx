@@ -1,217 +1,63 @@
 // AI-GENERATED
-import React, { Suspense, lazy, useState, useEffect } from "react";
-import { Layout, Menu, Spin } from "antd";
-import {
-  UserOutlined,
-  BookOutlined,
-  FormOutlined,
-  DashboardOutlined,
-  TeamOutlined,
-  SafetyOutlined,
-} from "@ant-design/icons";
-import type { MenuProps } from "antd";
+import React from "react";
 import { Navbar } from "./Navbar";
 import { DesignTokenProvider } from "./DesignTokenProvider";
-import { getEnabledPBCs, importFromRemote } from "../core/pbc-loader";
-const { Sider, Content } = Layout;
+import { getEnabledPBCs } from "../core/pbc-loader";
 
 interface Props {
   children?: React.ReactNode;
 }
 
-interface UserInfo {
-  userId: string;
-  username: string;
-  role: string;
-  email?: string;
-  fullName?: string;
-  status?: string;
-}
-
-// Icon và label cho PBC nghiệp vụ
-const PBC_CONFIG: Record<string, { label: string; icon: React.ReactNode }> = {
-  "student-profile":       { label: "Sinh viên",    icon: <UserOutlined /> },
-  "course-management":     { label: "Khóa học",     icon: <BookOutlined /> },
-  "enrollment-management": { label: "Đăng ký học",  icon: <FormOutlined /> },
-};
-
-// Roles được phép vào User Management
-const USER_MANAGEMENT_ROLES = ["ADMIN", "ACADEMIC_STAFF"];
-
-// Lazy load ProfileSlot từ pbc-auth
-const LazyProfileSlot = lazy(() => {
-  const authEntry = getEnabledPBCs().find((p) => p.pbcId === "auth");
-  if (!authEntry) return Promise.reject(new Error("pbc-auth not found"));
-  return importFromRemote<React.ComponentType<{ currentUser?: UserInfo; onLogout?: () => void }>>(
-    authEntry, "./ProfileSlot"
-  ).then((C) => ({ default: C }));
-});
-
-// Lazy load UserManagementSlot từ pbc-auth
-const LazyUserManagement = lazy(() => {
-  const authEntry = getEnabledPBCs().find((p) => p.pbcId === "auth");
-  if (!authEntry) return Promise.reject(new Error("pbc-auth not found"));
-  return importFromRemote<React.ComponentType<{ userRole?: string }>>(
-    authEntry, "./UserManagementSlot"
-  ).then((C) => ({ default: C }));
-});
+// PBC không hiển thị trong sidebar
+const HIDDEN_FROM_SIDEBAR = ["pbc-auth", "pbc-notification"];
 
 export const Shell: React.FC<Props> = ({ children }) => {
-  const pbcs = getEnabledPBCs().filter((p) => p.pbcId !== "auth");
-  const currentPath = window.location.pathname;
-
-  const [user, setUser] = useState<UserInfo | null>(() => {
-    const stored = sessionStorage.getItem("currentUser");
-    return stored ? JSON.parse(stored) : null;
-  });
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      setUser((e as CustomEvent<UserInfo | null>).detail);
-    };
-    window.addEventListener("shell:user-changed", handler);
-    return () => window.removeEventListener("shell:user-changed", handler);
-  }, []);
-
-  const canManageUsers = user ? USER_MANAGEMENT_ROLES.includes(user.role) : false;
-
-  // Xác định selectedKey từ route
-  const isUserMgmt = currentPath.startsWith("/user-management");
-  const isProfile = currentPath.startsWith("/profile");
-  const selectedKey = isUserMgmt
-    ? "user-management"
-    : isProfile
-    ? "profile"
-    : (pbcs.find(
-        (p) => currentPath === p.routePrefix || currentPath.startsWith(p.routePrefix + "/")
-      )?.pbcId ?? "dashboard");
-
-  const menuItems: MenuProps["items"] = [
-    {
-      key: "dashboard",
-      icon: <DashboardOutlined />,
-      label: "Dashboard",
-    },
-    { type: "divider" },
-    // PBC nghiệp vụ
-    ...pbcs.map((pbc) => ({
-      key: pbc.pbcId,
-      icon: PBC_CONFIG[pbc.pbcId]?.icon ?? <UserOutlined />,
-      label: PBC_CONFIG[pbc.pbcId]?.label ?? pbc.pbcId,
-    })),
-    // Menu quản trị — chỉ hiện với ADMIN / ACADEMIC_STAFF
-    ...(canManageUsers
-      ? [
-          { type: "divider" as const },
-          {
-            key: "admin-group",
-            icon: <SafetyOutlined />,
-            label: "Quản trị",
-            children: [
-              {
-                key: "user-management",
-                icon: <TeamOutlined />,
-                label: "Quản lý người dùng",
-              },
-            ],
-          },
-        ]
-      : []),
-  ];
-
-  // Route map: key → path
-  const ROUTE_MAP: Record<string, string> = {
-    dashboard:        "/dashboard",
-    "user-management": "/user-management",
-    ...Object.fromEntries(pbcs.map((p) => [p.pbcId, p.routePrefix])),
-  };
-
-  const handleMenuClick: MenuProps["onClick"] = ({ key }) => {
-    const path = ROUTE_MAP[key];
-    if (path) window.location.href = path;
-  };
-
-  // Render content theo route
-  const renderContent = () => {
-    if (isProfile) {
-      return (
-        <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", paddingTop: 80 }}><Spin size="large" tip="Đang tải hồ sơ..." /></div>}>
-          <LazyProfileSlot
-            currentUser={user ?? undefined}
-            onLogout={() => {
-              localStorage.removeItem("accessToken");
-              localStorage.removeItem("refreshToken");
-              sessionStorage.removeItem("currentUser");
-              window.location.href = "/login";
-            }}
-          />
-        </Suspense>
-      );
-    }
-    if (isUserMgmt && canManageUsers) {
-      return (
-        <Suspense
-          fallback={
-            <div style={{ display: "flex", justifyContent: "center", paddingTop: 80 }}>
-              <Spin size="large" tip="Đang tải Quản lý người dùng..." />
-            </div>
-          }
-        >
-          <LazyUserManagement userRole={user?.role} />
-        </Suspense>
-      );
-    }
-    return children;
-  };
+  const pbcs = getEnabledPBCs().filter(
+    (p) => !HIDDEN_FROM_SIDEBAR.includes(p.pbcId)
+  );
+  const pathname = window.location.pathname;
 
   return (
     <DesignTokenProvider>
-      <Layout style={{ minHeight: "100vh" }}>
+      <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
         <Navbar />
-        <Layout>
-          {/* Sidebar */}
-          <Sider
-            width={220}
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          <aside
             style={{
-              background: "#fff",
-              borderRight: "1px solid #f0f0f0",
-              overflow: "auto",
-              height: "calc(100vh - 56px)",
-              position: "sticky",
-              top: 56,
+              width: 220,
+              borderRight: "1px solid #e5e7eb",
+              padding: "16px 0",
+              background: "#fafafa",
             }}
           >
-            <Menu
-              mode="inline"
-              selectedKeys={[selectedKey]}
-              defaultOpenKeys={canManageUsers ? ["admin-group"] : []}
-              items={menuItems}
-              onClick={handleMenuClick}
-              style={{ height: "100%", borderRight: 0, paddingTop: 8 }}
-            />
-          </Sider>
-
-          {/* Main content */}
-          <Content
-            style={{
-              padding: 24,
-              background: "#f5f5f5",
-              minHeight: "calc(100vh - 56px)",
-              overflow: "auto",
-            }}
-          >
-            <Suspense
-              fallback={
-                <div style={{ display: "flex", justifyContent: "center", paddingTop: 80 }}>
-                  <Spin size="large" tip="Đang tải module..." />
-                </div>
-              }
-            >
-              {renderContent()}
-            </Suspense>
-          </Content>
-        </Layout>
-      </Layout>
+            {pbcs.map((pbc) => {
+              const isActive = pathname.startsWith(pbc.routePrefix);
+              return (
+                <a
+                  key={pbc.pbcId}
+                  href={pbc.routePrefix}
+                  style={{
+                    display: "block",
+                    padding: "10px 24px",
+                    textDecoration: "none",
+                    color: isActive ? "var(--pbc-primary-color, #1677ff)" : "#374151",
+                    fontWeight: isActive ? 600 : 400,
+                    background: isActive ? "#e6f4ff" : "transparent",
+                    borderRight: isActive ? "3px solid var(--pbc-primary-color, #1677ff)" : "3px solid transparent",
+                    fontFamily: "var(--pbc-font-family)",
+                    fontSize: 14,
+                  }}
+                >
+                  {(pbc as any).label ?? pbc.pbcId}
+                </a>
+              );
+            })}
+          </aside>
+          <main style={{ flex: 1, overflow: "auto", padding: 24 }}>
+            {children}
+          </main>
+        </div>
+      </div>
     </DesignTokenProvider>
   );
 };

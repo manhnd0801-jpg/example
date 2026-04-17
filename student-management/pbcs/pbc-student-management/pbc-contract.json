@@ -1,0 +1,110 @@
+{
+  "pbcId": "student-management",
+  "version": "1.0.0",
+  "name": "Student Management",
+  "description": "Quản lý hồ sơ sinh viên bao gồm tạo mới, cập nhật, thay đổi trạng thái và nhập/xuất Excel. Đây là nguồn dữ liệu chính (source of truth) cho thông tin sinh viên trong toàn bộ hệ thống.",
+  "category": "Academic",
+  "domain": "student-lifecycle",
+  "type": "full",
+
+  "sla": {
+    "availability": 99.9,
+    "responseTimeMs": 300,
+    "throughput": 1000
+  },
+
+  "technologies": {
+    "ui": "react",
+    "api": "nodejs",
+    "db": "postgresql",
+    "uiLibrary": "ant-design",
+    "messaging": "kafka"
+  },
+
+  "messaging": {
+    "broker": "kafka",
+    "jetstream": false,
+    "topicPrefix": "pbc.student-management",
+    "notes": "Dùng Kafka thay NATS vì toàn bộ student-management-portal đã chọn Kafka làm event bus chuẩn. Consumer group: cg.student-mgmt"
+  },
+
+  "slots": ["student-list", "student-form", "student-detail", "student-status"],
+
+  "hooks": {
+    "before": ["validatePayload", "enforceTenant", "validateStudentCode"],
+    "after": ["auditLog", "emitDomainEvent", "updateSearchIndex"]
+  },
+
+  "capabilities": {
+    "ui": {
+      "widgets": ["student-search", "student-status-badge"],
+      "slots": ["student-list", "student-form", "student-detail", "student-status"],
+      "designTokens": ["--pbc-primary-color", "--pbc-student-accent", "--pbc-border-radius", "--pbc-font-family"],
+      "uiLibrary": "ant-design"
+    },
+    "api": {
+      "supportsMetadata": true,
+      "endpoints": [
+        "/v1/students",
+        "/v1/students/:id",
+        "/v1/students/:id/status",
+        "/v1/students/import",
+        "/v1/students/export"
+      ]
+    },
+    "uiInteraction": {
+      "outputs": ["pbc.student-management.student.selected"],
+      "inputs": ["pbc.class-management.student.assigned-to-class"]
+    },
+    "businessEvents": {
+      "produces": [
+        "pbc.student-management.student.created",
+        "pbc.student-management.student.updated",
+        "pbc.student-management.student.deleted",
+        "pbc.student-management.student.status-changed"
+      ],
+      "consumes": [
+        "pbc.class-management.student.assigned-to-class"
+      ]
+    }
+  },
+
+  "permissions": [
+    "student:read",
+    "student:write",
+    "student:delete",
+    "student:import",
+    "student:export",
+    "student:status-change"
+  ],
+
+  "properties": {
+    "tenantResolution": "jwt-claim",
+    "dockerLayout": "docker/Dockerfile.ui and docker/Dockerfile.api",
+    "dataClassification": "personal — student data phải tuân thủ GDPR; attributes JSON có thể chứa thông tin nhạy cảm",
+    "requiredEnvVars": [
+      "DATABASE_URL",
+      "JWT_SECRET",
+      "KAFKA_BROKERS",
+      "KAFKA_GROUP_ID",
+      "PORT",
+      "CORS_ORIGIN"
+    ],
+    "apiAuthNotes": "GET /health là public. Tất cả endpoint khác yêu cầu JWT. CRUD operations yêu cầu role ADMIN hoặc ACADEMIC_STAFF."
+  },
+
+  "config": {
+    "webhookUrl": "",
+    "aiPromptRegistry": ""
+  },
+
+  "i18n": {
+    "defaultLocale": "vi",
+    "supportedLocales": ["vi", "en"]
+  },
+
+  "extensions": {
+    "supportAIHooks": true,
+    "allowCustomSlots": false
+  }
+}

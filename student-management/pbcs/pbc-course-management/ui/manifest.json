@@ -1,0 +1,14 @@
+{
+  "pbcId": "course-management",
+  "version": "1.0.0",
+  "scope": "pbc_course_management",
+  "module": "./bootstrap",
+  "slots": [
+    { "id": "course-list",   "component": "CourseListSlot" },
+    { "id": "course-form",   "component": "CourseFormSlot" },
+    { "id": "course-detail", "component": "CourseDetailSlot" }
+  ],
+  "designTokens": ["--pbc-primary-color", "--pbc-course-accent", "--pbc-border-radius", "--pbc-font-family"],
+  "defaultLocale": "vi",
+  "supportedLocales": ["vi", "en"]
+}

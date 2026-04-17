@@ -1,0 +1,474 @@
+# AI-GENERATED
+openapi: 3.1.0
+info:
+  title: Class Management API
+  description: API for managing classes, student assignments, and capacity management
+  version: 1.0.0
+  contact:
+    name: Class Management Team
+    email: support@example.com
+
+servers:
+  - url: http://localhost:3003/v1
+    description: Development server
+  - url: https://api.student-portal.com/v1
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the service
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /classes:
+    get:
+      summary: List classes
+      description: Retrieve a paginated list of classes with optional filtering
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: search
+          in: query
+          description: Search in className or classCode
+          schema:
+            type: string
+        - name: academicYear
+          in: query
+          description: Filter by academic year
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by class status
+          schema:
+            type: string
+            enum: [ACTIVE, COMPLETED, PLANNED]
+        - name: courseId
+          in: query
+          description: Filter by course ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of classes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+              example:
+                data:
+                  classes:
+                    - id: "456e7890-e89b-12d3-a456-426614174001"
+                      classCode: "CS2024A"
+                      className: "Computer Science 2024 A"
+                      academicYear: "2024-2025"
+                      maxStudents: 30
+                      currentStudents: 25
+                      status: "ACTIVE"
+                  pagination:
+                    page: 1
+                    pageSize: 20
+                    total: 50
+                    totalPages: 3
+                metadata:
+                  timestamp: "2024-01-15T10:30:00Z"
+                  requestId: "req_abc123"
+                  correlationId: "corr_xyz789"
+                  tenantId: "tenant-001"
+
+    post:
+      summary: Create class
+      description: Create a new class
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexiblePayload'
+            example:
+              data:
+                classCode: "CS2024B"
+                className: "Computer Science 2024 B"
+                academicYear: "2024-2025"
+                courseId: "789e0123-e89b-12d3-a456-426614174002"
+                maxStudents: 35
+                description: "Advanced Computer Science class"
+                attributes:
+                  room: "A101"
+                  schedule: "Mon-Wed-Fri 8:00-10:00"
+              metadata:
+                requestId: "req_def456"
+                correlationId: "corr_abc123"
+                tenantId: "tenant-001"
+      responses:
+        '201':
+          description: Class created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /classes/{id}:
+    get:
+      summary: Get class details
+      description: Retrieve detailed information about a specific class
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Class details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '404':
+          description: Class not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update class
+      description: Update an existing class
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexiblePayload'
+      responses:
+        '200':
+          description: Class updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '404':
+          description: Class not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete class
+      description: Delete a class (only if no students assigned)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Class deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '409':
+          description: Cannot delete class with assigned students
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /classes/{id}/students:
+    get:
+      summary: List students in class
+      description: Get all students assigned to a specific class
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of students in class
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+
+    post:
+      summary: Assign student to class
+      description: Assign a student to the class (with capacity check)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexiblePayload'
+            example:
+              data:
+                studentId: "123e4567-e89b-12d3-a456-426614174000"
+                assignedDate: "2024-01-15"
+              metadata:
+                requestId: "req_assign123"
+                correlationId: "corr_assign456"
+                tenantId: "tenant-001"
+      responses:
+        '200':
+          description: Student assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '409':
+          description: Class is at maximum capacity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /classes/{id}/students/{studentId}:
+    delete:
+      summary: Remove student from class
+      description: Remove a student from the class
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Student removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '404':
+          description: Student not found in class
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /classes/{id}/transfer:
+    post:
+      summary: Transfer student between classes
+      description: Atomically transfer a student from one class to another
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Source class ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexiblePayload'
+            example:
+              data:
+                studentId: "123e4567-e89b-12d3-a456-426614174000"
+                targetClassId: "789e0123-e89b-12d3-a456-426614174002"
+                transferDate: "2024-01-15"
+                reason: "Academic performance improvement"
+              metadata:
+                requestId: "req_transfer123"
+                correlationId: "corr_transfer456"
+                tenantId: "tenant-001"
+      responses:
+        '200':
+          description: Student transferred successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '409':
+          description: Target class is at maximum capacity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    FlexiblePayload:
+      type: object
+      required:
+        - data
+        - metadata
+      properties:
+        data:
+          type: object
+          description: Business data payload
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+
+    Metadata:
+      type: object
+      required:
+        - timestamp
+        - requestId
+        - tenantId
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+        correlationId:
+          type: string
+        traceId:
+          type: string
+        tenantId:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        data:
+          type: "null"
+        metadata:
+          allOf:
+            - $ref: '#/components/schemas/Metadata'
+            - type: object
+              properties:
+                error:
+                  type: object
+                  properties:
+                    code:
+                      type: string
+                    message:
+                      type: string
+                    details:
+                      type: object
+
+    Class:
+      type: object
+      required:
+        - id
+        - classCode
+        - className
+        - academicYear
+        - maxStudents
+        - currentStudents
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        classCode:
+          type: string
+          pattern: '^[A-Z]{2}[0-9]{4}[A-Z]$'
+        className:
+          type: string
+          maxLength: 255
+        academicYear:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{4}$'
+        courseId:
+          type: string
+          format: uuid
+        maxStudents:
+          type: integer
+          minimum: 1
+          maximum: 100
+        currentStudents:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum: [ACTIVE, COMPLETED, PLANNED]
+        description:
+          type: string
+        attributes:
+          type: object
+          description: Extensible JSON attributes
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

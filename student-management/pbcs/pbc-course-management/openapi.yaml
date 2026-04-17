@@ -1,0 +1,498 @@
+# AI-GENERATED
+openapi: 3.1.0
+info:
+  title: Course Management API
+  description: API for managing training programs, curriculum, and subject assignments
+  version: 1.0.0
+  contact:
+    name: Course Management Team
+    email: support@example.com
+
+servers:
+  - url: http://localhost:3004/v1
+    description: Development server
+  - url: https://api.student-portal.com/v1
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the service
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /courses:
+    get:
+      summary: List courses
+      description: Retrieve a paginated list of courses with optional filtering
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: search
+          in: query
+          description: Search in courseName or courseCode
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by course status
+          schema:
+            type: string
+            enum: [ACTIVE, CLOSED, UPCOMING]
+        - name: academicYear
+          in: query
+          description: Filter by academic year
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of courses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+              example:
+                data:
+                  courses:
+                    - id: "789e0123-e89b-12d3-a456-426614174002"
+                      courseCode: "CS2024"
+                      courseName: "Computer Science Program 2024"
+                      durationYears: 4
+                      status: "ACTIVE"
+                      totalCredits: 140
+                  pagination:
+                    page: 1
+                    pageSize: 20
+                    total: 25
+                    totalPages: 2
+                metadata:
+                  timestamp: "2024-01-15T10:30:00Z"
+                  requestId: "req_abc123"
+                  correlationId: "corr_xyz789"
+                  tenantId: "tenant-001"
+
+    post:
+      summary: Create course
+      description: Create a new training program/course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexiblePayload'
+            example:
+              data:
+                courseCode: "EE2024"
+                courseName: "Electrical Engineering Program 2024"
+                description: "4-year electrical engineering program"
+                durationYears: 4
+                totalCredits: 150
+                status: "UPCOMING"
+                attributes:
+                  accreditation: "ABET"
+                  specializations: ["Power Systems", "Electronics", "Control Systems"]
+              metadata:
+                requestId: "req_def456"
+                correlationId: "corr_abc123"
+                tenantId: "tenant-001"
+      responses:
+        '201':
+          description: Course created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /courses/{id}:
+    get:
+      summary: Get course details
+      description: Retrieve detailed information about a specific course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Course details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '404':
+          description: Course not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update course
+      description: Update an existing course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexiblePayload'
+      responses:
+        '200':
+          description: Course updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '404':
+          description: Course not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete course
+      description: Delete a course (only if no classes are using it)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Course deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '409':
+          description: Cannot delete course with active classes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /courses/{id}/subjects:
+    get:
+      summary: List course subjects
+      description: Get all subjects assigned to a specific course with semester information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: semester
+          in: query
+          description: Filter by semester
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 8
+        - name: isRequired
+          in: query
+          description: Filter by required/elective status
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of subjects in course
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+              example:
+                data:
+                  subjects:
+                    - subjectId: "012e3456-e89b-12d3-a456-426614174003"
+                      subjectCode: "CS101"
+                      subjectName: "Introduction to Programming"
+                      semester: 1
+                      isRequired: true
+                      credits: 3
+                      orderIndex: 1
+                  totalCredits: 140
+                  requiredCredits: 120
+                  electiveCredits: 20
+                metadata:
+                  timestamp: "2024-01-15T10:30:00Z"
+                  requestId: "req_subjects123"
+                  tenantId: "tenant-001"
+
+    post:
+      summary: Add subject to course
+      description: Assign a subject to the course curriculum
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexiblePayload'
+            example:
+              data:
+                subjectId: "012e3456-e89b-12d3-a456-426614174003"
+                semester: 1
+                isRequired: true
+                orderIndex: 5
+              metadata:
+                requestId: "req_add_subject123"
+                correlationId: "corr_add_subject456"
+                tenantId: "tenant-001"
+      responses:
+        '200':
+          description: Subject added to course successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '409':
+          description: Subject already assigned to this course
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /courses/{id}/subjects/{subjectId}:
+    put:
+      summary: Update subject assignment
+      description: Update subject assignment details in the course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: subjectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlexiblePayload'
+            example:
+              data:
+                semester: 2
+                isRequired: false
+                orderIndex: 3
+              metadata:
+                requestId: "req_update_subject123"
+                correlationId: "corr_update_subject456"
+                tenantId: "tenant-001"
+      responses:
+        '200':
+          description: Subject assignment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+
+    delete:
+      summary: Remove subject from course
+      description: Remove a subject from the course curriculum
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: subjectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Subject removed from course successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlexiblePayload'
+        '404':
+          description: Subject not found in course
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    FlexiblePayload:
+      type: object
+      required:
+        - data
+        - metadata
+      properties:
+        data:
+          type: object
+          description: Business data payload
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+
+    Metadata:
+      type: object
+      required:
+        - timestamp
+        - requestId
+        - tenantId
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        requestId:
+          type: string
+        correlationId:
+          type: string
+        traceId:
+          type: string
+        tenantId:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        data:
+          type: "null"
+        metadata:
+          allOf:
+            - $ref: '#/components/schemas/Metadata'
+            - type: object
+              properties:
+                error:
+                  type: object
+                  properties:
+                    code:
+                      type: string
+                    message:
+                      type: string
+                    details:
+                      type: object
+
+    Course:
+      type: object
+      required:
+        - id
+        - courseCode
+        - courseName
+        - durationYears
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        courseCode:
+          type: string
+          pattern: '^[A-Z]{2}[0-9]{4}$'
+        courseName:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        durationYears:
+          type: integer
+          minimum: 1
+          maximum: 6
+        totalCredits:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum: [ACTIVE, CLOSED, UPCOMING]
+        attributes:
+          type: object
+          description: Extensible JSON attributes
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CourseSubject:
+      type: object
+      required:
+        - courseId
+        - subjectId
+        - semester
+        - isRequired
+      properties:
+        courseId:
+          type: string
+          format: uuid
+        subjectId:
+          type: string
+          format: uuid
+        semester:
+          type: integer
+          minimum: 1
+          maximum: 8
+        isRequired:
+          type: boolean
+        orderIndex:
+          type: integer
+          minimum: 0

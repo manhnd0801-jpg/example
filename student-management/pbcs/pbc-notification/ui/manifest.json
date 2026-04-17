@@ -1,0 +1,14 @@
+{
+  "pbcId": "notification",
+  "version": "1.0.0",
+  "scope": "pbc_notification",
+  "module": "./bootstrap",
+  "slots": [
+    { "id": "notification-bell", "component": "NotificationBellSlot" },
+    { "id": "notification-list", "component": "NotificationListSlot" },
+    { "id": "audit-log",         "component": "AuditLogSlot" }
+  ],
+  "designTokens": ["--pbc-primary-color", "--pbc-notification-accent", "--pbc-border-radius", "--pbc-font-family"],
+  "defaultLocale": "vi",
+  "supportedLocales": ["vi", "en"]
+}

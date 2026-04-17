@@ -1,0 +1,252 @@
+# AI-GENERATED
+asyncapi: 2.6.0
+info:
+  title: Class Management Events
+  version: 1.0.0
+  description: Event specifications for Class Management PBC
+  contact:
+    name: Class Management Team
+    email: support@example.com
+
+servers:
+  kafka:
+    url: kafka:29092
+    protocol: kafka
+    description: Kafka broker for event communication
+
+defaultContentType: application/json
+
+channels:
+  pbc.class-management.class.created:
+    description: Published when a new class is created
+    publish:
+      operationId: publishClassCreated
+      message:
+        $ref: '#/components/messages/ClassCreated'
+
+  pbc.class-management.class.updated:
+    description: Published when a class is updated
+    publish:
+      operationId: publishClassUpdated
+      message:
+        $ref: '#/components/messages/ClassUpdated'
+
+  pbc.class-management.student.assigned-to-class:
+    description: Published when a student is assigned to a class
+    publish:
+      operationId: publishStudentAssignedToClass
+      message:
+        $ref: '#/components/messages/StudentAssignedToClass'
+
+  pbc.class-management.student.removed-from-class:
+    description: Published when a student is removed from a class
+    publish:
+      operationId: publishStudentRemovedFromClass
+      message:
+        $ref: '#/components/messages/StudentRemovedFromClass'
+
+  pbc.student-management.student.created:
+    description: Consumed when a new student is created
+    subscribe:
+      operationId: handleStudentCreated
+      message:
+        $ref: '#/components/messages/StudentCreated'
+
+  pbc.student-management.student.deleted:
+    description: Consumed when a student is deleted
+    subscribe:
+      operationId: handleStudentDeleted
+      message:
+        $ref: '#/components/messages/StudentDeleted'
+
+  pbc.student-management.student.status-changed:
+    description: Consumed when a student's status changes
+    subscribe:
+      operationId: handleStudentStatusChanged
+      message:
+        $ref: '#/components/messages/StudentStatusChanged'
+
+  pbc.subject-management.subject.assigned-to-class:
+    description: Consumed when a subject is assigned to a class
+    subscribe:
+      operationId: handleSubjectAssignedToClass
+      message:
+        $ref: '#/components/messages/SubjectAssignedToClass'
+
+components:
+  messages:
+    ClassCreated:
+      name: ClassCreated
+      title: Class Created Event
+      summary: Event published when a new class is created
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: ClassCreatedExample
+          summary: Example of class created event
+          payload:
+            eventId: "evt_456e7890-e89b-12d3-a456-426614174001"
+            eventType: "pbc.class-management.class.created"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T11:00:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-201"
+            data:
+              classId: "456e7890-e89b-12d3-a456-426614174001"
+              classCode: "CS2024A"
+              className: "Computer Science 2024 A"
+              academicYear: "2024-2025"
+              tenantId: "tenant-001"
+
+    ClassUpdated:
+      name: ClassUpdated
+      title: Class Updated Event
+      summary: Event published when a class is updated
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: ClassUpdatedExample
+          summary: Example of class updated event
+          payload:
+            eventId: "evt_567e8901-e89b-12d3-a456-426614174002"
+            eventType: "pbc.class-management.class.updated"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T11:05:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-202"
+            data:
+              classId: "456e7890-e89b-12d3-a456-426614174001"
+              updatedFields:
+                maxStudents: 35
+                description: "Updated class description"
+              tenantId: "tenant-001"
+
+    StudentAssignedToClass:
+      name: StudentAssignedToClass
+      title: Student Assigned to Class Event
+      summary: Event published when a student is assigned to a class
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: StudentAssignedToClassExample
+          summary: Example of student assigned to class event
+          payload:
+            eventId: "evt_678e9012-e89b-12d3-a456-426614174003"
+            eventType: "pbc.class-management.student.assigned-to-class"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T11:10:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-203"
+            data:
+              classId: "456e7890-e89b-12d3-a456-426614174001"
+              studentId: "123e4567-e89b-12d3-a456-426614174000"
+              classCode: "CS2024A"
+              className: "Computer Science 2024 A"
+              tenantId: "tenant-001"
+
+    StudentRemovedFromClass:
+      name: StudentRemovedFromClass
+      title: Student Removed from Class Event
+      summary: Event published when a student is removed from a class
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+      examples:
+        - name: StudentRemovedFromClassExample
+          summary: Example of student removed from class event
+          payload:
+            eventId: "evt_789e0123-e89b-12d3-a456-426614174004"
+            eventType: "pbc.class-management.student.removed-from-class"
+            schemaVersion: "1.0"
+            occurredAt: "2024-01-15T11:15:00Z"
+            tenantId: "tenant-001"
+            correlationId: "corr-204"
+            data:
+              classId: "456e7890-e89b-12d3-a456-426614174001"
+              studentId: "123e4567-e89b-12d3-a456-426614174000"
+              tenantId: "tenant-001"
+
+    StudentCreated:
+      name: StudentCreated
+      title: Student Created Event (Consumed)
+      summary: Event consumed when a new student is created
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    StudentDeleted:
+      name: StudentDeleted
+      title: Student Deleted Event (Consumed)
+      summary: Event consumed when a student is deleted
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    StudentStatusChanged:
+      name: StudentStatusChanged
+      title: Student Status Changed Event (Consumed)
+      summary: Event consumed when a student's status changes
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+    SubjectAssignedToClass:
+      name: SubjectAssignedToClass
+      title: Subject Assigned to Class Event (Consumed)
+      summary: Event consumed when a subject is assigned to a class
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/KafkaEnvelope'
+
+  schemas:
+    KafkaEnvelope:
+      type: object
+      required:
+        - eventId
+        - eventType
+        - schemaVersion
+        - occurredAt
+        - tenantId
+        - correlationId
+        - data
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Unique identifier for this event
+        eventType:
+          type: string
+          description: Type of event following pbc.{pbcId}.{aggregate}.{verb} pattern
+        schemaVersion:
+          type: string
+          description: Version of the event schema
+          default: "1.0"
+        occurredAt:
+          type: string
+          format: date-time
+          description: When the event occurred
+        tenantId:
+          type: string
+          description: Tenant identifier for multi-tenancy
+        correlationId:
+          type: string
+          description: Correlation ID for tracing related events
+        data:
+          type: object
+          description: Event-specific payload data
+
+  parameters:
+    tenantId:
+      description: Tenant identifier
+      schema:
+        type: string
+
+  operationTraits:
+    kafka:
+      bindings:
+        kafka:
+          groupId: cg.class-mgmt
+          clientId: pbc-class-management

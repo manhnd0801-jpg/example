@@ -1,0 +1,22 @@
+{
+  "student": {
+    "title": "Student Management",
+    "list": "Student List",
+    "create": "Add Student",
+    "edit": "Edit Student",
+    "detail": "Student Detail",
+    "studentCode": "Student Code",
+    "fullName": "Full Name",
+    "email": "Email",
+    "phone": "Phone",
+    "status": "Status",
+    "gender": "Gender",
+    "dateOfBirth": "Date of Birth",
+    "address": "Address",
+    "enrollmentDate": "Enrollment Date",
+    "status_ACTIVE": "Active",
+    "status_SUSPENDED": "Suspended",
+    "status_GRADUATED": "Graduated",
+    "status_DROPPED_OUT": "Dropped Out"
+  }
+}
